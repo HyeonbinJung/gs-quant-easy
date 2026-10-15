@@ -2,3 +2,4 @@
 gs_quant/.idea/
 .venv/
 __pycache__/
+*.egg-info/
