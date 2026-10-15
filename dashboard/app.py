@@ -8,8 +8,10 @@ gs_quant.timeseries 분석 함수를 웹 화면에서 바로 써볼 수 있는 �
 실행: python dashboard/app.py  →  http://localhost:5050
 """
 
+import datetime as dt
 import math
 import os
+import time
 from pathlib import Path
 
 import numpy as np
@@ -18,7 +20,12 @@ import requests
 from flask import Flask, jsonify, request, send_from_directory
 
 import gs_quant.timeseries as ts
+from gs_quant.datetime import business_day_count, business_day_offset, day_count_fraction, is_business_day
+from gs_quant.datetime.date import DayCountConvention
 from gs_quant.timeseries import Window
+from gs_quant.timeseries.backtesting import RebalFreq
+
+import functions as fn
 
 HERE = Path(__file__).resolve().parent
 PORT = int(os.environ.get("PORT", 5050))
@@ -26,6 +33,8 @@ TRADING_DAYS = 252
 RANGES = {"6mo", "1y", "2y", "5y"}
 
 app = Flask(__name__, static_folder=None)
+_cache: dict = {}
+CACHE_TTL = 600  # 같은 종목·기간은 10분 동안 다시 받지 않는다
 
 
 def fetch_prices(ticker: str, period: str) -> tuple[pd.Series, dict]:
@@ -69,8 +78,14 @@ class TickerNotFound(Exception):
 
 
 def load(ticker: str, period: str) -> tuple[pd.Series, dict]:
+    key = (ticker, period)
+    hit = _cache.get(key)
+    if hit and time.time() - hit[0] < CACHE_TTL:
+        return hit[1]
     try:
-        return fetch_prices(ticker, period)
+        result = fetch_prices(ticker, period)
+        _cache[key] = (time.time(), result)
+        return result
     except requests.HTTPError as exc:
         if exc.response is not None and exc.response.status_code == 404:
             raise TickerNotFound(ticker) from exc
@@ -184,6 +199,176 @@ def api_analyze():
     compare = {t: to_points(p / p.iloc[0] * 100) for t, p in closes.items()}
     return jsonify({"tickers": tickers, "benchmark": bench_ticker, "window": window,
                     "results": results, "correlation": corr, "compare": compare})
+
+
+# ------------------------------------------------------------------ 함수 실험실
+def parse_date(value) -> dt.date:
+    """'2026-01-31' 또는 오늘 기준 상대 일수('-90', '+30')"""
+    value = str(value).strip()
+    if value and value[0] in "+-" and value[1:].isdigit():
+        return dt.date.today() + dt.timedelta(days=int(value))
+    return dt.date.fromisoformat(value)
+
+
+fn._date = parse_date
+
+
+class Ctx:
+    def __init__(self, x=None, y=None, xs=None):
+        self.x, self.y, self.xs = x, y, xs or []
+
+    def weights(self, text):
+        n = len(self.xs)
+        try:
+            w = [float(v) for v in str(text).replace(" ", "").split(",") if v]
+        except ValueError:
+            raise ValueError("비중은 0.6, 0.4처럼 숫자를 쉼표로 구분해 입력하세요.")
+        if not w:
+            return [1 / n] * n
+        if len(w) != n:
+            raise ValueError(f"비중 개수({len(w)})가 종목 개수({n})와 다릅니다.")
+        return w
+
+
+def series_out(s: pd.Series, name: str) -> dict:
+    return {"name": name, **to_points(s.dropna())}
+
+
+def normalize_result(res, label: str) -> dict:
+    if isinstance(res, pd.DataFrame):
+        return {"kind": "lines", "lines": [series_out(res.iloc[:, i], str(c)) for i, c in enumerate(res.columns)]}
+    if isinstance(res, pd.Series):
+        if not isinstance(res.index, pd.DatetimeIndex):
+            res = res.copy()
+            res.index = pd.to_datetime(res.index)
+        return {"kind": "lines", "lines": [series_out(res, label)]}
+    if isinstance(res, (list, tuple)):
+        out = []
+        for i, r in enumerate(res):
+            out += normalize_result(r, f"{label} {i + 1}")["lines"]
+        return {"kind": "lines", "lines": out}
+    if isinstance(res, (int, float, np.floating, np.integer)):
+        return {"kind": "scalar", "value": float(res)}
+    raise ValueError("결과 형식을 표시할 수 없습니다.")
+
+
+def get_series(ticker: str, period: str, src: str):
+    try:
+        prices, meta = load(ticker, period)
+    except TickerNotFound:
+        raise ValueError(f"'{ticker}' 종목을 찾을 수 없습니다. 티커를 확인해 주세요.")
+    return (ts.returns(prices).dropna() if src == "returns" else prices), meta
+
+
+@app.get("/api/functions")
+def api_functions():
+    return jsonify(fn.catalog())
+
+
+@app.post("/api/run")
+def api_run():
+    body = request.get_json(force=True)
+    spec = fn.REGISTRY.get(body.get("id"))
+    if not spec:
+        return jsonify({"error": "알 수 없는 함수입니다."}), 400
+    period = body.get("range") if body.get("range") in RANGES else "1y"
+    src = body.get("src") or spec["src"]
+    given = body.get("params") or {}
+    params = {p["name"]: given.get(p["name"], p["default"]) for p in spec["params"]}
+    try:
+        ctx, inputs = Ctx(), []
+        if spec["input"] in ("x", "xy"):
+            ctx.x, meta = get_series((body.get("x") or "AAPL").strip().upper(), period, src)
+            inputs.append(series_out(ctx.x, meta["name"]))
+        if spec["input"] == "xy":
+            ctx.y, meta = get_series((body.get("y") or "^GSPC").strip().upper(), period, src)
+            inputs.append(series_out(ctx.y, meta["name"]))
+        if spec["input"] == "list":
+            tickers = [t.strip().upper() for t in (body.get("tickers") or "").split(",") if t.strip()][:8]
+            if len(tickers) < 2:
+                raise ValueError("종목을 2개 이상 쉼표로 구분해 입력하세요.")
+            for t in tickers:
+                s, meta = get_series(t, period, "price")
+                ctx.xs.append(s)
+                inputs.append(series_out(s, meta["name"]))
+            common = pd.concat(ctx.xs, axis=1, join="inner").dropna()
+            ctx.xs = [common.iloc[:, i] for i in range(common.shape[1])]
+        result = normalize_result(spec["run"](ctx, params), spec["title"])
+    except Exception as exc:  # 원인을 화면에 보여준다
+        return jsonify({"error": f"계산할 수 없습니다: {exc}"}), 400
+    return jsonify({"result": result, "inputs": inputs, "src": src, "params": params})
+
+
+def perf_stats(s: pd.Series) -> dict:
+    r = ts.returns(s).dropna()
+    vol = float(r.std() * math.sqrt(TRADING_DAYS))
+    years = max(len(s) / TRADING_DAYS, 1e-9)
+    total = float(s.iloc[-1] / s.iloc[0] - 1)
+    return {"total_return": total * 100, "cagr": ((1 + total) ** (1 / years) - 1) * 100, "volatility": vol * 100,
+            "max_drawdown": float(ts.max_drawdown(s).iloc[-1]) * 100,
+            "sharpe": float(r.mean() * TRADING_DAYS / vol) if vol else None}
+
+
+@app.post("/api/backtest")
+def api_backtest():
+    body = request.get_json(force=True)
+    period = body.get("range") if body.get("range") in RANGES else "2y"
+    tickers = [t.strip().upper() for t in (body.get("tickers") or "").split(",") if t.strip()][:8]
+    try:
+        if len(tickers) < 2:
+            raise ValueError("종목을 2개 이상 입력하세요.")
+        series, names = [], []
+        for t in tickers:
+            s, meta = get_series(t, period, "price")
+            series.append(s)
+            names.append(meta["name"])
+        common = pd.concat(series, axis=1, join="inner").dropna()
+        series = [common.iloc[:, i] for i in range(common.shape[1])]
+        weights = Ctx(xs=series).weights(body.get("weights", ""))
+        if abs(sum(weights) - 1) > 1e-6:
+            raise ValueError(f"비중의 합이 1이 되어야 합니다(현재 {sum(weights):.2f}).")
+        cost = float(body.get("cost", 0.1)) / 100
+        labels = {"daily": "매일 리밸런싱", "weekly": "매주 리밸런싱", "monthly": "매월 리밸런싱"}
+        # basket_series는 100에서 시작하므로 다른 곡선과 같이 1에서 시작하도록 맞춘다
+        curves = {label: (lambda b: b / b.iloc[0])(ts.backtesting.basket_series(series, weights, [cost] * len(series), RebalFreq(freq)))
+                  for freq, label in labels.items()}
+        # 비교용: 처음 비중대로 사서 그대로 둔 경우
+        curves["사서 그대로 두기"] = (common / common.iloc[0] * weights).sum(axis=1)
+        for name, s in zip(names, series):
+            curves[name] = s / s.iloc[0]
+        n = len(series)
+        rets = common.pct_change()
+        return jsonify({
+            "chosen": labels.get(body.get("rebal_freq"), "매월 리밸런싱"),
+            "names": names, "tickers": tickers, "weights": weights,
+            "curves": {k: to_points(v) for k, v in curves.items()},
+            "stats": {k: perf_stats(v) for k, v in curves.items()},
+            "correlation": [[float(rets.iloc[:, i].corr(rets.iloc[:, j])) for j in range(n)] for i in range(n)],
+        })
+    except Exception as exc:
+        return jsonify({"error": f"백테스트할 수 없습니다: {exc}"}), 400
+
+
+@app.post("/api/dates")
+def api_dates():
+    b = request.get_json(force=True)
+    try:
+        start, end = parse_date(b["start"]), parse_date(b["end"])
+        conv = DayCountConvention(b.get("convention", "ACTUAL_365F"))
+        rate = float(b.get("rate", 3.5)) / 100
+        principal = float(b.get("principal", 10_000_000))
+        frac = float(day_count_fraction(start, end, conv))
+        return jsonify({
+            "calendar_days": (end - start).days,
+            "business_days": int(business_day_count(start, end)),
+            "start_is_business": bool(is_business_day(start)),
+            "end_is_business": bool(is_business_day(end)),
+            "offset_date": business_day_offset(start, int(b.get("offset", 0)), roll="forward").isoformat(),
+            "fraction": frac,
+            "interest": principal * rate * frac,
+        })
+    except Exception as exc:
+        return jsonify({"error": f"계산할 수 없습니다: {exc}"}), 400
 
 
 if __name__ == "__main__":

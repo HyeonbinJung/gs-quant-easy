@@ -66,10 +66,43 @@
   .glossary div { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
   .glossary b { display: block; font-size: 14px; margin-bottom: 2px; }
   .muted { color: var(--muted); font-size: 13px; }
+  /* 상단 메뉴 */
+  .nav { display: flex; gap: 4px; padding: 0 24px; background: var(--panel); border-bottom: 1px solid var(--line); overflow-x: auto; }
+  .nav button { width: auto; border: none; border-bottom: 3px solid transparent; border-radius: 0; background: none; padding: 12px 14px;
+    cursor: pointer; color: var(--muted); font-weight: 500; white-space: nowrap; }
+  .nav button.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .view[hidden] { display: none; }
+  .intro { font-size: 14px; color: var(--muted); margin: 0 0 4px; }
+  /* 함수 실험실 */
+  .lab { display: grid; grid-template-columns: 280px 1fr; gap: 16px; align-items: start; }
+  .fn-list { max-height: 78vh; overflow-y: auto; padding: 12px; }
+  .fn-list h3 { font-size: 12px; color: var(--muted); margin: 14px 0 4px; letter-spacing: .03em; }
+  .fn-list a { display: flex; justify-content: space-between; gap: 6px; padding: 5px 8px; border-radius: 6px; font-size: 13px; color: var(--text); text-decoration: none; cursor: pointer; }
+  .fn-list a:hover { background: var(--accent-soft); }
+  .fn-list a.active { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+  .fn-list a code { font-size: 11px; color: var(--muted); }
+  .fn-head h2 { margin-bottom: 2px; }
+  .fn-head code { font-size: 13px; color: var(--muted); }
+  .explain { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0 16px; }
+  .explain div { background: var(--bg); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .explain b { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+  .form { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; align-items: end; margin-bottom: 14px; }
+  .form .check { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+  .form .check input { width: auto; }
+  .codebox { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-family: ui-monospace, Consolas, monospace;
+    font-size: 12.5px; white-space: pre-wrap; word-break: break-all; margin-top: 12px; }
+  .scalar { font-size: 36px; font-weight: 700; padding: 30px 0; text-align: center; font-variant-numeric: tabular-nums; }
+  table.stats { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.stats th, table.stats td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.stats th:first-child, table.stats td:first-child { text-align: left; }
+  table.stats tr.hl td { background: var(--accent-soft); font-weight: 500; }
+  .results { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .chart-box.tall { height: 340px; }
   @media (max-width: 900px) {
     .controls { grid-template-columns: 1fr 1fr; }
     .cards { grid-template-columns: repeat(2, 1fr); }
-    .grid2, .glossary { grid-template-columns: 1fr; }
+    .grid2, .glossary, .lab, .explain, .results { grid-template-columns: 1fr; }
+    .fn-list { max-height: 40vh; }
   }
 </style>
 </head>
@@ -78,8 +111,15 @@
   <h1>gs-quant-easy 대시보드</h1>
   <p>골드만삭스 퀀트 라이브러리 <b>gs_quant</b>의 분석 함수를 금융 초보자도 쉽게 써볼 수 있게 만든 화면입니다. 용어나 <span class="help">?</span> 에 마우스를 올려 보세요.</p>
 </header>
+<nav class="nav">
+  <button data-view="analyze" class="active" data-tt="종목 분석" data-tb="종목 하나하나의 수익률, 위험, 기술적 지표를 한 화면에서 봅니다. 처음이라면 여기서 시작하세요.">종목 분석</button>
+  <button data-view="backtest" data-tt="포트폴리오 백테스트" data-tb="여러 종목을 정한 비중으로 담아 과거에 투자했다면 어땠을지 계산합니다. 리밸런싱 주기와 매매 비용까지 반영합니다.">포트폴리오 백테스트</button>
+  <button data-view="lab" data-tt="함수 실험실" data-tb="계정 없이 쓸 수 있는 gs_quant 함수 87가지를 하나씩 골라 직접 실행해 봅니다. 함수마다 쉬운 설명과 파이썬 코드가 함께 나옵니다.">함수 실험실</button>
+  <button data-view="dates" data-tt="날짜·이자 계산기" data-tb="영업일 수, N영업일 뒤 날짜, 이자 계산 기간 비율과 이자를 계산합니다. 채권·예금 공부에 유용합니다.">날짜·이자 계산기</button>
+</nav>
 
 <div class="wrap">
+<div class="view" id="view-analyze">
   <section class="panel">
     <h2>처음이신가요?</h2>
     <ol class="steps">
@@ -182,6 +222,97 @@
     <p class="chart-desc">1에 가까우면 같이 오르내리고, 0 근처면 따로 움직이고, 음수면 반대로 움직입니다. 상관관계가 낮은 종목을 섞으면 위험이 분산됩니다.</p>
     <div id="corr"></div>
   </section>
+</div>
+
+<!-- ============================ 포트폴리오 백테스트 -->
+<div class="view" id="view-backtest" hidden>
+  <section class="panel">
+    <h2>포트폴리오 백테스트 <span class="help" data-tip="backtest">?</span></h2>
+    <p class="intro">여러 종목을 비중대로 담아 과거에 투자했다면 어떻게 됐을지 계산합니다. gs_quant의 <code>basket_series</code> 함수를 사용합니다.</p>
+    <div class="form" style="margin-top:12px">
+      <div style="grid-column: span 2">
+        <label>종목 (쉼표 구분, 2~8개) <span class="help" data-tip="ticker">?</span></label>
+        <input id="bt-tickers" value="005930.KS, AAPL, SPY">
+      </div>
+      <div>
+        <label>비중 (쉼표 구분) <span class="help" data-tip="weights">?</span></label>
+        <input id="bt-weights" value="0.3, 0.3, 0.4" placeholder="비우면 똑같이">
+      </div>
+      <div>
+        <label>리밸런싱 주기 <span class="help" data-tip="rebalance">?</span></label>
+        <select id="bt-freq"><option value="daily">매일</option><option value="weekly">매주</option><option value="monthly" selected>매월</option></select>
+      </div>
+      <div>
+        <label>매매 비용(%) <span class="help" data-tip="cost">?</span></label>
+        <input id="bt-cost" type="number" value="0.1" step="0.05" min="0">
+      </div>
+      <div>
+        <label>분석 기간 <span class="help" data-tip="range">?</span></label>
+        <select id="bt-range"><option value="1y">1년</option><option value="2y" selected>2년</option><option value="5y">5년</option></select>
+      </div>
+      <button class="primary" id="bt-run">백테스트 실행</button>
+    </div>
+    <div class="presets">
+      <span class="muted">예시 포트폴리오:</span>
+      <button class="chip bt-preset" data-t="SPY, TLT" data-w="0.6, 0.4" data-tt="60/40 포트폴리오" data-tb="주식 60%, 채권 40%. 가장 전통적인 자산배분입니다. 주식이 빠질 때 채권이 완충해 주길 기대합니다.">주식60·채권40</button>
+      <button class="chip bt-preset" data-t="005930.KS, 000660.KS" data-w="0.5, 0.5" data-tt="반도체 2종목" data-tb="삼성전자와 SK하이닉스 반반. 같은 업종이라 상관관계가 높아 분산 효과는 작습니다.">국내 반도체</button>
+      <button class="chip bt-preset" data-t="SPY, GLD, TLT" data-w="0.34, 0.33, 0.33" data-tt="주식·금·채권" data-tb="서로 다르게 움직이는 세 자산을 똑같이 담은 분산 포트폴리오입니다.">주식·금·채권</button>
+      <button class="chip bt-preset" data-t="AAPL, MSFT, NVDA, GOOGL, AMZN" data-w="" data-tt="미국 빅테크" data-tb="미국 대형 기술주 5개를 똑같은 비중(각 20%)으로 담습니다.">빅테크 5</button>
+    </div>
+  </section>
+  <div id="bt-status"></div>
+  <section class="panel" id="bt-result" hidden>
+    <h2>자산 성장 곡선 <span class="help" data-tip="growth">?</span></h2>
+    <p class="chart-desc">1에서 시작합니다. 1.5면 처음 투자금이 1.5배(50% 수익)가 된 것입니다. 굵은 선이 선택한 리밸런싱 주기의 포트폴리오입니다.</p>
+    <div class="chart-box tall"><canvas id="c-bt"></canvas></div>
+    <h2 style="margin-top:18px">성과 비교</h2>
+    <div style="overflow-x:auto"><table class="stats" id="bt-stats"></table></div>
+    <p class="muted" id="bt-insight"></p>
+  </section>
+</div>
+
+<!-- ============================ 함수 실험실 -->
+<div class="view" id="view-lab" hidden>
+  <div class="lab">
+    <section class="panel fn-list">
+      <input id="fn-search" type="search" placeholder="함수 검색 (예: 변동성, macd)">
+      <div id="fn-items"></div>
+    </section>
+    <div>
+      <section class="panel" id="fn-detail"><p class="muted">왼쪽에서 함수를 고르세요.</p></section>
+      <section class="panel" id="fn-output" hidden>
+        <h2 id="fn-out-title">결과</h2>
+        <div id="fn-out-body"></div>
+        <div class="codebox" id="fn-code"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ 날짜·이자 계산기 -->
+<div class="view" id="view-dates" hidden>
+  <section class="panel">
+    <h2>날짜·이자 계산기</h2>
+    <p class="intro">gs_quant의 날짜 함수(<code>business_day_count</code>, <code>business_day_offset</code>, <code>day_count_fraction</code>)로 영업일과 이자를 계산합니다. 영업일은 주말만 쉬는 날로 봅니다(공휴일 달력은 GS 계정이 필요).</p>
+    <div class="form" style="margin-top:12px">
+      <div><label>시작일 <span class="help" data-tip="start_date">?</span></label><input id="d-start" type="date"></div>
+      <div><label>종료일 <span class="help" data-tip="end_date">?</span></label><input id="d-end" type="date"></div>
+      <div><label>시작일 + N영업일 <span class="help" data-tip="offset">?</span></label><input id="d-offset" type="number" value="10"></div>
+      <div><label>일수 계산 관행 <span class="help" data-tip="convention">?</span></label>
+        <select id="d-conv">
+          <option value="ACTUAL_365F" selected>ACT/365 고정 (원화·파운드)</option><option value="ACTUAL_360">ACT/360 (달러 단기금리)</option>
+          <option value="ACTUAL_365L">ACT/365L</option><option value="ACTUAL_364">ACT/364</option><option value="ACTUAL_365_25">ACT/365.25</option><option value="ONE_ONE">1/1</option>
+        </select></div>
+      <div><label>원금(원) <span class="help" data-tip="principal">?</span></label><input id="d-principal" type="number" value="10000000" step="100000"></div>
+      <div><label>연 이자율(%) <span class="help" data-tip="rate">?</span></label><input id="d-rate" type="number" value="3.5" step="0.1"></div>
+      <button class="primary" id="d-run">계산하기</button>
+    </div>
+  </section>
+  <section class="panel" id="d-result" hidden>
+    <div class="cards" id="d-cards"></div>
+    <p class="muted" id="d-note"></p>
+  </section>
+</div>
 
   <section class="panel">
     <h2>용어 사전</h2>
@@ -214,6 +345,21 @@ const TIPS = {
   bollinger: ["볼린저 밴드", "이동평균선 위아래로 '평소 흔들림 × 2'만큼 띠를 그린 것입니다. 가격은 대부분 이 띠 안에서 움직이므로, 띠를 벗어나면 평소보다 강한 움직임이 나온 것입니다.", "gs_quant.timeseries.bollinger_bands"],
   ma: ["이동평균", "최근 N일 가격의 평균을 이어 그린 선입니다. 들쭉날쭉한 가격을 부드럽게 만들어 큰 흐름(추세)을 보여줍니다.", "gs_quant.timeseries.moving_average"],
   correlation: ["상관관계", "두 종목이 얼마나 같은 방향으로 움직이는지 -1~1 사이로 나타냅니다. 분산투자를 할 때는 상관관계가 낮은 종목끼리 섞는 것이 위험을 줄이는 데 유리합니다.", "gs_quant.timeseries.correlation"],
+  backtest: ["백테스트", "과거 데이터로 '그때 이렇게 투자했다면 어땠을까'를 계산해 보는 것입니다. 과거 성과가 미래를 보장하지는 않지만, 전략의 위험과 특성을 이해하는 데 큰 도움이 됩니다.", "gs_quant.timeseries.backtesting.basket_series"],
+  weights: ["비중", "각 종목에 투자금의 몇 %를 넣을지 정합니다. 종목 순서대로 0.6, 0.4처럼 쓰고, 합은 1(100%)이어야 합니다. 비우면 모두 같은 비중으로 나눕니다."],
+  rebalance: ["리밸런싱", "가격이 움직이면 처음 정한 비중이 틀어집니다(오른 종목 비중이 커짐). 정해진 주기마다 원래 비중으로 다시 맞추는 것을 리밸런싱이라고 합니다. 자주 할수록 비중은 정확하지만 매매 비용이 늘어납니다."],
+  cost: ["매매 비용", "사고팔 때 드는 수수료, 세금, 호가 차이(슬리피지)를 거래 금액 대비 %로 넣습니다. 국내 주식은 보통 0.1~0.3%, 미국 주식은 0.05~0.1% 정도로 가정합니다."],
+  growth: ["자산 성장 곡선", "투자금 1이 시간에 따라 얼마로 불어났는지 보여줍니다. 곡선이 가파르게 오를수록 수익이 크고, 깊게 꺼질수록 손실 구간이 컸다는 뜻입니다."],
+  start_date: ["시작일", "계산을 시작할 날짜입니다. 예금이라면 가입일, 채권이라면 이자 계산 시작일입니다."],
+  end_date: ["종료일", "계산이 끝나는 날짜입니다. 예금 만기일, 채권 이자 지급일 등입니다."],
+  offset: ["N영업일 뒤", "시작일로부터 주말을 빼고 N일 뒤가 언제인지 계산합니다. 주식 결제일(T+2), 송금 도착일 계산에 쓰입니다. 음수를 넣으면 N영업일 전입니다.", "gs_quant.datetime.business_day_offset"],
+  convention: ["일수 계산 관행 (Day Count)", "1년을 며칠로 보고 이자를 계산할지 정하는 시장 약속입니다. ACT/365는 실제 일수 ÷ 365, ACT/360은 실제 일수 ÷ 360입니다. 같은 금리라도 ACT/360이 이자가 조금 더 많습니다. 원화 예금·채권은 보통 ACT/365를 씁니다.", "gs_quant.datetime.day_count_fraction"],
+  principal: ["원금", "이자를 계산할 기준 금액입니다."],
+  rate: ["연 이자율", "1년 기준 이자율(%)입니다. 실제 이자는 '원금 × 이자율 × 기간 비율'로 계산합니다."],
+  src: ["입력 데이터 종류", "함수에 가격을 그대로 넣을지, 가격을 일별 수익률(하루 변화율)로 바꿔서 넣을지 정합니다. 함수마다 알맞은 기본값이 정해져 있으니 처음에는 그대로 두세요."],
+  fx: ["X 종목", "함수에 넣을 첫 번째(주) 종목입니다."],
+  fy: ["Y 종목 (비교 대상)", "X와 비교하거나 함께 계산할 두 번째 종목입니다. 시장 지수(^GSPC = S&P 500, ^KS11 = KOSPI)를 넣으면 시장과 비교할 수 있습니다."],
+  overlay: ["입력 데이터 같이 보기", "결과와 함께 원래 입력 데이터를 오른쪽 축에 겹쳐 그립니다. 함수가 데이터를 어떻게 바꿨는지 비교하기 좋습니다."],
 };
 
 // 카드 값 해석: [기준값 비교 함수, 문구, 색]
@@ -238,7 +384,7 @@ function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 // 툴팁: data-tip 키가 있는 요소에 마우스를 올리거나 탭하면 표시
 const tip = document.getElementById("tooltip");
 function showTip(el) {
-  const t = TIPS[el.dataset.tip];
+  const t = el.dataset.tt ? [el.dataset.tt, el.dataset.tb || "", el.dataset.fn] : TIPS[el.dataset.tip];
   if (!t) return;
   tip.innerHTML = `<b>${t[0]}</b>${t[1]}${t[2] ? `<span class="fn">사용 함수: ${t[2]}</span>` : ""}`;
   tip.classList.add("show");
@@ -249,15 +395,15 @@ function showTip(el) {
   if (y + h > innerHeight - 8) y = r.top - h - 8;
   tip.style.left = x + "px"; tip.style.top = y + "px";
 }
-document.addEventListener("mouseover", (e) => { const el = e.target.closest("[data-tip]"); el ? showTip(el) : tip.classList.remove("show"); });
-document.addEventListener("click", (e) => { const el = e.target.closest("[data-tip]"); el ? showTip(el) : tip.classList.remove("show"); });
+document.addEventListener("mouseover", (e) => { const el = e.target.closest("[data-tip],[data-tt]"); el ? showTip(el) : tip.classList.remove("show"); });
+document.addEventListener("click", (e) => { const el = e.target.closest("[data-tip],[data-tt]"); el ? showTip(el) : tip.classList.remove("show"); });
 document.addEventListener("scroll", () => tip.classList.remove("show"), true);
 
 // 용어 사전
 document.getElementById("glossary").innerHTML = ["volatility", "max_drawdown", "sharpe", "beta", "rsi", "zscore", "bollinger", "ma", "correlation", "cagr", "ticker", "benchmark"]
   .map((k) => `<div data-tip="${k}"><b>${TIPS[k][0]}</b>${TIPS[k][1].split(". ")[0]}.</div>`).join("");
 
-document.querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => {
+document.querySelectorAll(".chip:not(.bt-preset)").forEach((b) => b.addEventListener("click", () => {
   const input = document.getElementById("tickers");
   const list = input.value.split(",").map((s) => s.trim()).filter(Boolean);
   if (!list.includes(b.dataset.t)) list.push(b.dataset.t);
@@ -381,6 +527,301 @@ async function run() {
 document.getElementById("run").addEventListener("click", run);
 document.getElementById("tickers").addEventListener("keydown", (e) => e.key === "Enter" && run());
 run();
+
+// ============================================================ 화면 전환
+const loaded = {};
+function showView(name) {
+  document.querySelectorAll(".nav button").forEach((b) => b.classList.toggle("active", b.dataset.view === name));
+  document.querySelectorAll(".view").forEach((v) => (v.hidden = v.id !== "view-" + name));
+  tip.classList.remove("show");
+  if (!loaded[name]) {
+    loaded[name] = true;
+    if (name === "lab") initLab();
+    if (name === "backtest") runBacktest();
+    if (name === "dates") runDates();
+  }
+  try { localStorage.setItem("gsqe-view", name); } catch (e) {}
+  history.replaceState(null, "", "#" + name);
+}
+document.querySelectorAll(".nav button").forEach((b) => b.addEventListener("click", () => showView(b.dataset.view)));
+
+async function postJSON(url, body) {
+  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await res.json();
+  if (!res.ok || j.error) throw new Error(j.error || res.statusText);
+  return j;
+}
+const banner = (msg, warn) => `<div class="banner ${warn ? "warn-b" : ""}">${msg}</div>`;
+
+// ============================================================ 포트폴리오 백테스트
+document.querySelectorAll(".bt-preset").forEach((b) => b.addEventListener("click", () => {
+  document.getElementById("bt-tickers").value = b.dataset.t;
+  document.getElementById("bt-weights").value = b.dataset.w;
+  runBacktest();
+}));
+
+const STAT_COLS = [
+  ["total_return", "기간 수익률", (v) => pct(v)],
+  ["cagr", "연평균 수익률", (v) => pct(v)],
+  ["volatility", "변동성", (v) => pct(v, false)],
+  ["max_drawdown", "최대 낙폭", (v) => pct(v)],
+  ["sharpe", "샤프 지수", (v) => (v == null ? "-" : v.toFixed(2))],
+];
+
+async function runBacktest() {
+  const btn = document.getElementById("bt-run");
+  btn.disabled = true; btn.textContent = "계산 중…";
+  document.getElementById("bt-status").innerHTML = banner("gs_quant basket_series로 포트폴리오를 계산하고 있습니다…");
+  try {
+    const freq = document.getElementById("bt-freq").value;
+    const d = await postJSON("/api/backtest", {
+      tickers: document.getElementById("bt-tickers").value,
+      weights: document.getElementById("bt-weights").value,
+      rebal_freq: freq,
+      cost: document.getElementById("bt-cost").value,
+      range: document.getElementById("bt-range").value,
+    });
+    const names = Object.keys(d.curves);
+    const labels = d.curves[d.chosen].dates;
+    const portfolios = ["매일 리밸런싱", "매주 리밸런싱", "매월 리밸런싱", "사서 그대로 두기"];
+    const sets = names.map((n, i) => {
+      const m = Object.fromEntries(d.curves[n].dates.map((x, j) => [x, d.curves[n].values[j]]));
+      const isChosen = n === d.chosen, isPort = portfolios.includes(n);
+      return {
+        label: n, data: labels.map((x) => m[x] ?? null),
+        borderColor: isChosen ? css("--accent") : isPort ? css("--muted") : COLORS[(i + 1) % COLORS.length],
+        borderWidth: isChosen ? 3 : isPort ? 1.2 : 1.2,
+        borderDash: isPort && !isChosen ? [4, 3] : [],
+        hidden: isPort && !isChosen && n !== "사서 그대로 두기",
+      };
+    });
+    document.getElementById("bt-result").hidden = false;
+    lineChart("c-bt", labels, sets);
+
+    const head = `<tr><th>구분</th>${STAT_COLS.map(([k, l]) => `<th><span class="term" data-tip="${k === "total_return" ? "total_return" : k}">${l}</span></th>`).join("")}</tr>`;
+    const rows = names.map((n) => `<tr class="${n === d.chosen ? "hl" : ""}"><td>${esc(n)}${n === d.chosen ? " ★" : ""}</td>${
+      STAT_COLS.map(([k, , f]) => `<td>${f(d.stats[n][k])}</td>`).join("")}</tr>`).join("");
+    document.getElementById("bt-stats").innerHTML = head + rows;
+
+    const p = d.stats[d.chosen], best = d.names.reduce((a, n) => (d.stats[n].sharpe > d.stats[a].sharpe ? n : a), d.names[0]);
+    const avgCorr = (() => { let s = 0, c = 0; d.correlation.forEach((r, i) => r.forEach((v, j) => { if (i < j) { s += v; c++; } })); return c ? s / c : 0; })();
+    const worstSingle = Math.min(...d.names.map((n) => d.stats[n].max_drawdown));
+    document.getElementById("bt-insight").innerHTML =
+      `<b>쉽게 읽기:</b> 이 포트폴리오(${esc(d.chosen)})는 연평균 ${pct(p.cagr)}, 변동성 ${pct(p.volatility, false)}, 최대 낙폭 ${pct(p.max_drawdown)}이었습니다. ` +
+      `종목들 사이 평균 상관관계는 ${avgCorr.toFixed(2)}로 ${avgCorr < 0.3 ? "낮아서 분산 효과가 컸습니다" : avgCorr < 0.7 ? "보통 수준이라 분산 효과가 어느 정도 있었습니다" : "높아서 분산 효과가 작았습니다"}. ` +
+      `개별 종목 중 가장 나빴던 낙폭은 ${pct(worstSingle)}였고, 위험 대비 성과(샤프 지수)가 가장 좋았던 종목은 ${esc(best)}입니다. ` +
+      `범례를 눌러 다른 리밸런싱 주기 선을 켜고 끌 수 있습니다.`;
+    document.getElementById("bt-result").hidden = false;
+    document.getElementById("bt-status").innerHTML = "";
+  } catch (e) {
+    document.getElementById("bt-status").innerHTML = banner(esc(e.message), true);
+  } finally {
+    btn.disabled = false; btn.textContent = "백테스트 실행";
+  }
+}
+document.getElementById("bt-run").addEventListener("click", runBacktest);
+
+// ============================================================ 함수 실험실
+let catalog = null, currentFn = null;
+const SRC_LABEL = { price: "가격", returns: "일별 수익률" };
+
+function attr(s) { return esc(s ?? ""); }
+
+function relDate(v) {
+  if (/^[+-]\d+$/.test(String(v))) { const d = new Date(); d.setDate(d.getDate() + Number(v)); return d.toISOString().slice(0, 10); }
+  return v;
+}
+
+async function initLab() {
+  const res = await fetch("/api/functions");
+  catalog = await res.json();
+  renderFnList("");
+  document.getElementById("fn-search").addEventListener("input", (e) => renderFnList(e.target.value));
+  selectFn(catalog.functions[0].id);
+}
+
+function renderFnList(q) {
+  q = q.trim().toLowerCase();
+  let html = "";
+  for (const cat of catalog.categories) {
+    const items = catalog.functions.filter((f) => f.cat === cat &&
+      (!q || (f.title + f.id + f.desc).toLowerCase().includes(q)));
+    if (!items.length) continue;
+    html += `<h3>${esc(cat)} (${items.length})</h3>` + items.map((f) =>
+      `<a data-id="${f.id}" class="${currentFn && currentFn.id === f.id ? "active" : ""}" data-tt="${attr(f.title)}" data-tb="${attr(f.desc)}" data-fn="ts.${f.id}">
+        <span>${esc(f.title)}</span><code>${esc(f.id)}</code></a>`).join("");
+  }
+  const box = document.getElementById("fn-items");
+  box.innerHTML = html || `<p class="muted">검색 결과가 없습니다.</p>`;
+  box.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => selectFn(a.dataset.id)));
+}
+
+function paramInput(p) {
+  const id = "p-" + p.name;
+  const lab = `<label><span data-tt="${attr(p.label)}" data-tb="${attr(p.tip)}" class="term">${esc(p.label)}</span> <span class="help" data-tt="${attr(p.label)}" data-tb="${attr(p.tip)}">?</span></label>`;
+  if (p.type === "enum")
+    return `<div>${lab}<select id="${id}">${p.options.map(([v, l]) => `<option value="${attr(v)}" ${v === p.default ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></div>`;
+  if (p.type === "bool")
+    return `<div class="check"><input type="checkbox" id="${id}" ${p.default ? "checked" : ""}>${lab.replace("<label>", "<label for='" + id + "' style='margin:0'>")}</div>`;
+  if (p.type === "date") return `<div>${lab}<input type="date" id="${id}" value="${relDate(p.default)}"></div>`;
+  if (p.type === "text") return `<div>${lab}<input id="${id}" value="${attr(p.default)}" placeholder="비우면 똑같이"></div>`;
+  return `<div>${lab}<input type="number" id="${id}" value="${p.default}" ${p.min != null ? `min="${p.min}"` : ""} ${p.max != null ? `max="${p.max}"` : ""} step="${p.step || (p.type === "int" ? 1 : "any")}"></div>`;
+}
+
+function selectFn(id) {
+  currentFn = catalog.functions.find((f) => f.id === id);
+  const f = currentFn;
+  document.querySelectorAll("#fn-items a").forEach((a) => a.classList.toggle("active", a.dataset.id === id));
+  const inputs = [];
+  if (f.input === "x" || f.input === "xy")
+    inputs.push(`<div><label>X 종목 <span class="help" data-tip="fx">?</span></label><input id="fn-x" value="${f.input === "xy" ? "005930.KS" : "AAPL"}"></div>`);
+  if (f.input === "xy")
+    inputs.push(`<div><label>Y 종목 <span class="help" data-tip="fy">?</span></label><input id="fn-y" value="^KS11"></div>`);
+  if (f.input === "list")
+    inputs.push(`<div style="grid-column: span 2"><label>종목들 (쉼표 구분) <span class="help" data-tip="ticker">?</span></label><input id="fn-list" value="005930.KS, AAPL, SPY"></div>`);
+  if (f.input !== "none" && f.input !== "list")
+    inputs.push(`<div><label>입력 데이터 <span class="help" data-tip="src">?</span></label><select id="fn-src">
+      <option value="price" ${f.src === "price" ? "selected" : ""}>가격</option><option value="returns" ${f.src === "returns" ? "selected" : ""}>일별 수익률</option></select></div>`);
+  if (f.input !== "none")
+    inputs.push(`<div><label>분석 기간 <span class="help" data-tip="range">?</span></label><select id="fn-range">
+      <option value="6mo">6개월</option><option value="1y">1년</option><option value="2y" selected>2년</option><option value="5y">5년</option></select></div>`);
+
+  document.getElementById("fn-detail").innerHTML = `
+    <div class="fn-head"><h2>${esc(f.title)}</h2><code>gs_quant.timeseries.${esc(f.id)}</code> · <span class="muted">${esc(f.cat)}</span></div>
+    <div class="explain">
+      <div><b>무엇인가요?</b>${esc(f.desc)}</div>
+      <div><b>어떻게 읽나요?</b>${esc(f.read)}</div>
+      <div><b>언제 쓰나요?</b>${esc(f.use)}</div>
+    </div>
+    <div class="form">${inputs.join("")}${f.params.map(paramInput).join("")}
+      ${f.input !== "none" ? `<div class="check"><input type="checkbox" id="fn-overlay" checked><label for="fn-overlay" style="margin:0">입력 같이 보기</label> <span class="help" data-tip="overlay">?</span></div>` : ""}
+      <button class="primary" id="fn-run">실행</button></div>
+    <div id="fn-status"></div>`;
+  document.getElementById("fn-run").addEventListener("click", runFn);
+  document.getElementById("fn-output").hidden = true;
+  runFn();
+}
+
+function readParams(f) {
+  const out = {};
+  for (const p of f.params) {
+    const el = document.getElementById("p-" + p.name);
+    out[p.name] = p.type === "bool" ? el.checked : p.type === "int" ? parseInt(el.value, 10) : p.type === "float" ? parseFloat(el.value) : el.value;
+  }
+  return out;
+}
+
+function codeFor(f, params, body) {
+  let code = f.code;
+  for (const [k, v] of Object.entries(params)) code = code.split(`{${k}}`).join(typeof v === "boolean" ? (v ? "True" : "False") : v);
+  const setup = [];
+  setup.push("import gs_quant.timeseries as ts");
+  if (f.input === "x" || f.input === "xy") {
+    const v = (body.src === "returns") ? "r" : "x";
+    setup.push(`# x: ${body.x} ${SRC_LABEL[body.src]} 시계열 (pandas.Series)`);
+    if (v === "r") setup.push("r = ts.returns(x)");
+    if (f.input === "xy") setup.push(`# y: ${body.y} ${SRC_LABEL[body.src]} 시계열`);
+  }
+  if (f.input === "list") setup.push(`# series: [${body.tickers}] 가격 시계열 목록`);
+  return setup.join("\n") + "\n\nresult = " + code;
+}
+
+async function runFn() {
+  const f = currentFn, btn = document.getElementById("fn-run");
+  const body = { id: f.id, params: readParams(f) };
+  if (document.getElementById("fn-x")) body.x = document.getElementById("fn-x").value;
+  if (document.getElementById("fn-y")) body.y = document.getElementById("fn-y").value;
+  if (document.getElementById("fn-list")) body.tickers = document.getElementById("fn-list").value;
+  if (document.getElementById("fn-src")) body.src = document.getElementById("fn-src").value;
+  if (document.getElementById("fn-range")) body.range = document.getElementById("fn-range").value;
+  btn.disabled = true; btn.textContent = "계산 중…";
+  document.getElementById("fn-status").innerHTML = "";
+  try {
+    const d = await postJSON("/api/run", body);
+    renderFnOutput(f, d, body);
+  } catch (e) {
+    document.getElementById("fn-status").innerHTML = banner(esc(e.message), true);
+    document.getElementById("fn-output").hidden = true;
+  } finally {
+    btn.disabled = false; btn.textContent = "실행";
+  }
+}
+
+function renderFnOutput(f, d, body) {
+  const out = document.getElementById("fn-out-body");
+  document.getElementById("fn-out-title").innerHTML = `결과: ${esc(f.title)} <span class="help" data-tt="${attr(f.title)}" data-tb="${attr(f.read)}">?</span>`;
+  document.getElementById("fn-code").textContent = codeFor(f, d.params, { ...body, src: d.src });
+  document.getElementById("fn-output").hidden = false;
+  charts["c-fn"]?.destroy(); delete charts["c-fn"];
+  if (d.result.kind === "scalar") {
+    out.innerHTML = `<div class="scalar">${Math.abs(d.result.value) >= 1000 ? Math.round(d.result.value).toLocaleString("ko-KR") : d.result.value.toPrecision(6).replace(/\.?0+$/, "")}</div>`;
+    return;
+  }
+  const lines = d.result.lines;
+  const total = lines.reduce((s, l) => s + l.values.filter((v) => v != null).length, 0);
+  const last = lines.map((l) => { const v = l.values.filter((x) => x != null); return `${esc(l.name)}: <b>${v.length ? fmtVal(v[v.length - 1]) : "-"}</b>`; }).join(" · ");
+  out.innerHTML = `<p class="muted">마지막 값 → ${last} (데이터 ${total.toLocaleString()}개)</p><div class="chart-box tall"><canvas id="c-fn"></canvas></div>`;
+  const overlay = document.getElementById("fn-overlay")?.checked;
+  const allDates = [...new Set([...lines.flatMap((l) => l.dates), ...(overlay ? d.inputs.flatMap((l) => l.dates) : [])])].sort();
+  const toData = (l) => { const m = Object.fromEntries(l.dates.map((x, j) => [x, l.values[j]])); return allDates.map((x) => m[x] ?? null); };
+  const datasets = lines.map((l, i) => ({ label: l.name, data: toData(l), borderColor: COLORS[i % COLORS.length], yAxisID: "y" }));
+  if (overlay) d.inputs.slice(0, 3).forEach((l) => datasets.push({ label: `입력: ${l.name}`, data: toData(l), borderColor: css("--muted"), borderWidth: 1, borderDash: [3, 3], yAxisID: "y2" }));
+  const text = css("--muted"), grid = css("--line");
+  const isBool = ["and_", "or_", "not_", "compare"].includes(f.id);
+  charts["c-fn"] = new Chart(document.getElementById("c-fn"), {
+    type: "line",
+    data: { labels: allDates, datasets: datasets.map((x) => ({ pointRadius: 0, borderWidth: 1.8, spanGaps: true, stepped: isBool, ...x })) },
+    options: {
+      responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+      plugins: { legend: { labels: { color: text, boxWidth: 12 } } },
+      scales: {
+        x: { ticks: { color: text, maxTicksLimit: 7, maxRotation: 0 }, grid: { display: false } },
+        y: { position: "left", ticks: { color: text }, grid: { color: grid }, title: { display: true, text: "결과", color: text } },
+        y2: { position: "right", display: !!overlay, ticks: { color: text }, grid: { display: false }, title: { display: true, text: "입력", color: text } },
+      },
+    },
+  });
+}
+function fmtVal(v) { return Math.abs(v) >= 1000 ? Math.round(v).toLocaleString("ko-KR") : Math.abs(v) >= 1 ? v.toFixed(2) : v.toPrecision(3); }
+
+// ============================================================ 날짜·이자 계산기
+(() => {
+  const t = new Date(), e = new Date(); e.setMonth(e.getMonth() + 3);
+  document.getElementById("d-start").value = t.toISOString().slice(0, 10);
+  document.getElementById("d-end").value = e.toISOString().slice(0, 10);
+})();
+async function runDates() {
+  try {
+    const d = await postJSON("/api/dates", {
+      start: document.getElementById("d-start").value, end: document.getElementById("d-end").value,
+      offset: document.getElementById("d-offset").value, convention: document.getElementById("d-conv").value,
+      principal: document.getElementById("d-principal").value, rate: document.getElementById("d-rate").value,
+    });
+    const card = (tipKey, title, value, note) => `<div class="card"><div class="k"><span class="term" ${tipKey}>${title}</span></div><div class="v">${value}</div><div class="note muted">${note}</div></div>`;
+    const tt = (a, b, fnName) => `data-tt="${attr(a)}" data-tb="${attr(b)}" ${fnName ? `data-fn="${fnName}"` : ""}`;
+    document.getElementById("d-cards").innerHTML = [
+      card(tt("달력 일수", "주말·휴일을 포함한 전체 일수입니다."), "달력 일수", d.calendar_days + "일", "주말 포함"),
+      card(tt("영업일 수", "토·일요일을 뺀 일수입니다. 공휴일은 빼지 않습니다(공휴일 달력은 GS 데이터 필요).", "gs_quant.datetime.business_day_count"), "영업일 수", d.business_days + "일", "주말 제외"),
+      card(tt("N영업일 뒤", TIPS.offset[1], "gs_quant.datetime.business_day_offset"), `시작일 + ${esc(document.getElementById("d-offset").value)}영업일`, d.offset_date, d.start_is_business ? "시작일은 영업일" : "시작일이 주말이라 다음 영업일부터 셈"),
+      card(tt("기간 비율", "이자 계산에 쓰는 '1년 중 몇 분의 몇' 값입니다. 0.25면 1년의 4분의 1입니다.", "gs_quant.datetime.day_count_fraction"), "기간 비율", d.fraction.toFixed(6), document.getElementById("d-conv").selectedOptions[0].text),
+      card(tt("예상 이자", "원금 × 연 이자율 × 기간 비율입니다. 세금(이자소득세 15.4%)은 빼지 않은 세전 금액입니다."), "예상 이자 (세전)", Math.round(d.interest).toLocaleString("ko-KR") + "원", "원금 × 이자율 × 기간 비율"),
+      card(tt("세후 이자", "한국 이자소득세 15.4%(소득세 14% + 지방소득세 1.4%)를 뺀 금액입니다."), "예상 이자 (세후)", Math.round(d.interest * (1 - 0.154)).toLocaleString("ko-KR") + "원", "이자소득세 15.4% 차감"),
+    ].join("");
+    document.getElementById("d-note").textContent = `${d.end_is_business ? "" : "종료일이 주말입니다. 실제 만기 지급은 다음 영업일에 이뤄지는 경우가 많습니다. "}같은 기간이라도 일수 계산 관행을 바꾸면 이자가 달라집니다. 바꿔서 비교해 보세요.`;
+    document.getElementById("d-result").hidden = false;
+  } catch (e) {
+    document.getElementById("d-note").textContent = e.message;
+    document.getElementById("d-result").hidden = false;
+  }
+}
+document.getElementById("d-run").addEventListener("click", runDates);
+
+{
+  const fromHash = location.hash.slice(1);
+  let v = ["analyze", "backtest", "lab", "dates"].includes(fromHash) ? fromHash : null;
+  if (!v) { try { v = localStorage.getItem("gsqe-view"); } catch (e) {} }
+  if (v && v !== "analyze") showView(v);
+}
 </script>
 </body>
 </html>
