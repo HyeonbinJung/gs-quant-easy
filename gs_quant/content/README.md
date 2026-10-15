@@ -1,7 +1,7 @@
-# Content Overview
+# 콘텐츠 개요
 
-Content and research produced using gs_quant - featuring tactical case studies looking at screens,
-backtesting strategies, attribution analytics and more.
+gs_quant로 만든 콘텐츠와 리서치 모음입니다. 스크리닝, 전략 백테스트, 성과 요인 분석 등을 다룬
+실전 사례 연구를 담고 있습니다.
 
 - 📄 [Contents.ipynb](Contents.ipynb)
 - 📄 [Index.ipynb](Index.ipynb)

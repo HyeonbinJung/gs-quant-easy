@@ -1,74 +1,61 @@
-# Contributor Covenant Code of Conduct
+# 기여자 서약 행동 강령
 
-## Our Pledge
+## 우리의 서약
 
-In the interest of fostering an open and welcoming environment, we as
-contributors and maintainers pledge to making participation in our project and
-our community a harassment-free experience for everyone, regardless of age, body
-size, disability, ethnicity, gender identity and expression, level of experience,
-nationality, personal appearance, race, religion, or sexual identity and
-orientation.
+열려 있고 환영받는 환경을 만들기 위해, 기여자이자 관리자인 우리는 나이, 체형,
+장애, 민족, 성 정체성과 표현, 경험 수준, 국적, 외모, 인종, 종교, 성적 정체성과
+지향에 관계없이 모든 사람이 괴롭힘 없이 프로젝트와 커뮤니티에 참여할 수 있도록
+할 것을 서약합니다.
 
-## Our Standards
+## 우리의 기준
 
-Examples of behavior that contributes to creating a positive environment
-include:
+긍정적인 환경을 만드는 데 도움이 되는 행동의 예는 다음과 같습니다.
 
-* Using welcoming and inclusive language
-* Being respectful of differing viewpoints and experiences
-* Gracefully accepting constructive criticism
-* Focusing on what is best for the community
-* Showing empathy towards other community members
+* 환영하고 포용하는 언어 사용
+* 서로 다른 관점과 경험 존중
+* 건설적인 비판을 정중하게 수용
+* 커뮤니티에 가장 좋은 것에 집중
+* 다른 커뮤니티 구성원에게 공감 표현
 
-Examples of unacceptable behavior by participants include:
+참여자가 해서는 안 되는 행동의 예는 다음과 같습니다.
 
-* The use of sexualized language or imagery and unwelcome sexual attention or
-advances
-* Trolling, insulting/derogatory comments, and personal or political attacks
-* Public or private harassment
-* Publishing others' private information, such as a physical or electronic
-  address, without explicit permission
-* Other conduct which could reasonably be considered inappropriate in a
-  professional setting
+* 성적인 언어나 이미지 사용, 원치 않는 성적 관심이나 접근
+* 트롤링, 모욕적이거나 비하하는 댓글, 인신공격이나 정치적 공격
+* 공개적이거나 사적인 괴롭힘
+* 명시적인 허락 없이 실제 주소나 전자 주소 같은 타인의 개인 정보를 공개하는 행위
+* 직업적인 환경에서 부적절하다고 합리적으로 판단될 수 있는 기타 행위
 
-## Our Responsibilities
+## 우리의 책임
 
-Project maintainers are responsible for clarifying the standards of acceptable
-behavior and are expected to take appropriate and fair corrective action in
-response to any instances of unacceptable behavior.
+프로젝트 관리자는 허용되는 행동의 기준을 명확히 할 책임이 있으며, 허용되지 않는
+행동이 발생하면 적절하고 공정한 시정 조치를 취해야 합니다.
 
-Project maintainers have the right and responsibility to remove, edit, or
-reject comments, commits, code, wiki edits, issues, and other contributions
-that are not aligned to this Code of Conduct, or to ban temporarily or
-permanently any contributor for other behaviors that they deem inappropriate,
-threatening, offensive, or harmful.
+프로젝트 관리자는 이 행동 강령에 맞지 않는 댓글, 커밋, 코드, 위키 편집, 이슈 및
+기타 기여를 삭제, 수정, 거부할 권리와 책임이 있습니다. 또한 부적절하거나 위협적이거나
+불쾌하거나 해롭다고 판단되는 행동을 한 기여자를 일시적 또는 영구적으로 차단할 수 있습니다.
 
-## Scope
+## 적용 범위
 
-This Code of Conduct applies both within project spaces and in public spaces
-when an individual is representing the project or its community. Examples of
-representing a project or community include using an official project e-mail
-address, posting via an official social media account, or acting as an appointed
-representative at an online or offline event. Representation of a project may be
-further defined and clarified by project maintainers.
+이 행동 강령은 프로젝트 공간 안에서, 그리고 개인이 프로젝트나 커뮤니티를 대표하는
+공공장소에서 모두 적용됩니다. 프로젝트나 커뮤니티를 대표하는 예로는 공식 프로젝트
+이메일 주소 사용, 공식 소셜 미디어 계정으로 게시, 온라인이나 오프라인 행사에서 지정된
+대표로 활동하는 것 등이 있습니다. 프로젝트를 대표하는 범위는 프로젝트 관리자가 더
+구체적으로 정할 수 있습니다.
 
-## Enforcement
+## 시행
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported by contacting the project team at gs-oss-abuse@gs.com. All
-complaints will be reviewed and investigated and will result in a response that
-is deemed necessary and appropriate to the circumstances. The project team is
-obligated to maintain confidentiality with regard to the reporter of an incident.
-Further details of specific enforcement policies may be posted separately.
+폭력적이거나 괴롭히거나 그 밖에 허용되지 않는 행동은 프로젝트 팀(gs-oss-abuse@gs.com)에
+신고할 수 있습니다. 모든 신고는 검토·조사되며, 상황에 맞게 필요하고 적절하다고 판단되는
+조치로 이어집니다. 프로젝트 팀은 신고자에 대한 비밀을 유지할 의무가 있습니다.
+구체적인 시행 정책은 별도로 게시될 수 있습니다.
 
-Project maintainers who do not follow or enforce the Code of Conduct in good
-faith may face temporary or permanent repercussions as determined by other
-members of the project's leadership.
+행동 강령을 성실하게 따르거나 시행하지 않는 프로젝트 관리자는 프로젝트 리더십의 다른
+구성원이 결정하는 일시적 또는 영구적인 제재를 받을 수 있습니다.
 
-## Attribution
+## 출처
 
-This Code of Conduct is adapted from the [Contributor Covenant][homepage], version 1.4,
-available at [http://contributor-covenant.org/version/1/4][version]
+이 행동 강령은 [기여자 서약(Contributor Covenant)][homepage] 버전 1.4를 바탕으로 합니다.
+원문은 [http://contributor-covenant.org/version/1/4][version]에서 볼 수 있습니다.
 
 [homepage]: http://contributor-covenant.org
 [version]: http://contributor-covenant.org/version/1/4/

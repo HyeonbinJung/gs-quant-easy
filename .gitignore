@@ -1,2 +1,4 @@
 *.pyc
 gs_quant/.idea/
+.venv/
+__pycache__/

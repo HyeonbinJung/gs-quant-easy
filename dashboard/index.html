@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gs-quant-easy 대시보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f5f6f8; --panel: #fff; --text: #1b1d22; --muted: #6a6f7a; --line: #e3e5ea;
+    --accent: #2f6fde; --accent-soft: #e9f0fd; --good: #1a9a5b; --warn: #c98a00; --bad: #d1423f;
+    --tip-bg: #1b1d22; --tip-text: #f5f6f8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101216; --panel: #191c21; --text: #e7e9ee; --muted: #9aa0ab; --line: #2b2f37;
+      --accent: #6ea0ff; --accent-soft: #1c2a44; --good: #3fc583; --warn: #f0b429; --bad: #f2716d;
+      --tip-bg: #e7e9ee; --tip-text: #101216;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: "Noto Sans KR", system-ui, sans-serif; line-height: 1.6; }
+  header { background: var(--panel); border-bottom: 1px solid var(--line); padding: 18px 24px; }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 20px 16px 60px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+  .panel h2 { margin: 0 0 12px; font-size: 16px; display: flex; align-items: center; gap: 6px; }
+  .controls { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 12px; align-items: end; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  input, select, button { font: inherit; font-size: 14px; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); width: 100%; }
+  button.primary { background: var(--accent); color: #fff; border: none; cursor: pointer; font-weight: 500; white-space: nowrap; }
+  button.primary:disabled { opacity: .6; cursor: wait; }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip { width: auto; padding: 4px 10px; font-size: 13px; border-radius: 999px; cursor: pointer; background: var(--accent-soft); border: none; color: var(--accent); }
+  .help { display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; border-radius: 50%;
+    background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 700; cursor: help; flex-shrink: 0; }
+  [data-tip] { cursor: help; }
+  .term { border-bottom: 1px dashed var(--muted); }
+  #tooltip { position: fixed; z-index: 50; max-width: 320px; background: var(--tip-bg); color: var(--tip-text); padding: 10px 12px;
+    border-radius: 8px; font-size: 13px; line-height: 1.55; pointer-events: none; opacity: 0; transition: opacity .12s; box-shadow: 0 6px 20px rgba(0,0,0,.2); }
+  #tooltip.show { opacity: 1; }
+  #tooltip b { display: block; margin-bottom: 4px; font-size: 14px; }
+  #tooltip .fn { display: block; margin-top: 6px; opacity: .7; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .tab { width: auto; cursor: pointer; padding: 6px 14px; }
+  .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .card .k { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+  .card .v { font-size: 22px; font-weight: 700; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .card .note { font-size: 12px; }
+  .good { color: var(--good); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .chart-box { position: relative; height: 260px; }
+  .chart-title { font-size: 14px; font-weight: 500; margin: 0 0 4px; display: flex; align-items: center; gap: 6px; }
+  .chart-desc { font-size: 12px; color: var(--muted); margin: 0 0 8px; }
+  table.corr { border-collapse: collapse; font-size: 14px; }
+  table.corr th, table.corr td { padding: 8px 12px; text-align: center; border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  .banner { padding: 10px 14px; border-radius: 8px; background: var(--accent-soft); font-size: 14px; margin-bottom: 14px; }
+  .banner.warn-b { background: #fff4d6; color: #7a5400; }
+  .steps { margin: 0; padding-left: 20px; font-size: 14px; }
+  .glossary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .glossary div { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .glossary b { display: block; font-size: 14px; margin-bottom: 2px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  @media (max-width: 900px) {
+    .controls { grid-template-columns: 1fr 1fr; }
+    .cards { grid-template-columns: repeat(2, 1fr); }
+    .grid2, .glossary { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>gs-quant-easy 대시보드</h1>
+  <p>골드만삭스 퀀트 라이브러리 <b>gs_quant</b>의 분석 함수를 금융 초보자도 쉽게 써볼 수 있게 만든 화면입니다. 용어나 <span class="help">?</span> 에 마우스를 올려 보세요.</p>
+</header>
+
+<div class="wrap">
+  <section class="panel">
+    <h2>처음이신가요?</h2>
+    <ol class="steps">
+      <li>아래 칸에 보고 싶은 종목의 <span class="term" data-tip="ticker">티커</span>를 입력하거나 예시 버튼을 누르세요. 쉼표로 최대 5개까지 비교할 수 있습니다.</li>
+      <li><b>분석하기</b>를 누르면 수익률, 위험(변동성·낙폭), 기술적 지표가 계산됩니다.</li>
+      <li>숫자 아래 색깔 문구(<span class="good">초록</span>·<span class="warn">노랑</span>·<span class="bad">빨강</span>)가 그 값이 어느 정도인지 쉽게 알려줍니다.</li>
+    </ol>
+  </section>
+
+  <section class="panel">
+    <div class="controls">
+      <div>
+        <label>종목 티커 <span class="help" data-tip="ticker">?</span></label>
+        <input id="tickers" value="005930.KS, AAPL" placeholder="예: 005930.KS, AAPL">
+      </div>
+      <div>
+        <label>분석 기간 <span class="help" data-tip="range">?</span></label>
+        <select id="range">
+          <option value="6mo">6개월</option><option value="1y" selected>1년</option>
+          <option value="2y">2년</option><option value="5y">5년</option>
+        </select>
+      </div>
+      <div>
+        <label>이동 구간 <span class="help" data-tip="window">?</span></label>
+        <select id="window">
+          <option value="10">10일 (약 2주)</option><option value="22" selected>22일 (약 1개월)</option>
+          <option value="63">63일 (약 3개월)</option>
+        </select>
+      </div>
+      <div>
+        <label>비교 기준 <span class="help" data-tip="benchmark">?</span></label>
+        <select id="benchmark">
+          <option value="^GSPC">S&amp;P 500 (미국)</option><option value="^KS11">KOSPI (한국)</option>
+          <option value="^IXIC">나스닥 (미국)</option><option value="">없음</option>
+        </select>
+      </div>
+      <button class="primary" id="run">분석하기</button>
+    </div>
+    <div class="presets">
+      <span class="muted">예시:</span>
+      <button class="chip" data-t="005930.KS">삼성전자</button>
+      <button class="chip" data-t="000660.KS">SK하이닉스</button>
+      <button class="chip" data-t="247540.KQ">에코프로비엠</button>
+      <button class="chip" data-t="AAPL">애플</button>
+      <button class="chip" data-t="NVDA">엔비디아</button>
+      <button class="chip" data-t="TSLA">테슬라</button>
+      <button class="chip" data-t="SPY">S&amp;P500 ETF</button>
+    </div>
+  </section>
+
+  <div id="status"></div>
+
+  <section class="panel" id="compare-panel" hidden>
+    <h2>수익률 비교 <span class="help" data-tip="compare">?</span></h2>
+    <p class="chart-desc">시작일 가격을 100으로 맞춰서 그렸습니다. 120이면 20% 올랐다는 뜻입니다.</p>
+    <div class="chart-box"><canvas id="c-compare"></canvas></div>
+  </section>
+
+  <section class="panel" id="detail-panel" hidden>
+    <h2>종목별 상세 분석</h2>
+    <div class="tabs" id="tabs"></div>
+    <div id="sample-banner"></div>
+    <div class="cards" id="cards"></div>
+    <div class="grid2">
+      <div>
+        <p class="chart-title">가격과 볼린저 밴드 <span class="help" data-tip="bollinger">?</span></p>
+        <p class="chart-desc">가운데 선은 이동평균, 위아래 선은 평소 움직임의 범위입니다.</p>
+        <div class="chart-box"><canvas id="c-price"></canvas></div>
+      </div>
+      <div>
+        <p class="chart-title">변동성 추이 <span class="help" data-tip="volatility">?</span></p>
+        <p class="chart-desc">높을수록 가격이 크게 출렁이는 시기입니다.</p>
+        <div class="chart-box"><canvas id="c-vol"></canvas></div>
+      </div>
+      <div>
+        <p class="chart-title">고점 대비 하락폭 <span class="help" data-tip="drawdown">?</span></p>
+        <p class="chart-desc">0%는 최고가, -20%는 최고가보다 20% 떨어진 상태입니다.</p>
+        <div class="chart-box"><canvas id="c-dd"></canvas></div>
+      </div>
+      <div>
+        <p class="chart-title">RSI (과열/침체) <span class="help" data-tip="rsi">?</span></p>
+        <p class="chart-desc">70 위는 과열, 30 아래는 침체 구간으로 봅니다.</p>
+        <div class="chart-box"><canvas id="c-rsi"></canvas></div>
+      </div>
+      <div>
+        <p class="chart-title">Z-점수 <span class="help" data-tip="zscore">?</span></p>
+        <p class="chart-desc">최근 평균에서 얼마나 벗어났는지. ±2를 넘으면 이례적입니다.</p>
+        <div class="chart-box"><canvas id="c-z"></canvas></div>
+      </div>
+      <div>
+        <p class="chart-title">베타 추이 <span class="help" data-tip="beta">?</span></p>
+        <p class="chart-desc">1보다 크면 시장보다 더 크게, 작으면 덜 움직입니다.</p>
+        <div class="chart-box"><canvas id="c-beta"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="corr-panel" hidden>
+    <h2>종목 간 상관관계 <span class="help" data-tip="correlation">?</span></h2>
+    <p class="chart-desc">1에 가까우면 같이 오르내리고, 0 근처면 따로 움직이고, 음수면 반대로 움직입니다. 상관관계가 낮은 종목을 섞으면 위험이 분산됩니다.</p>
+    <div id="corr"></div>
+  </section>
+
+  <section class="panel">
+    <h2>용어 사전</h2>
+    <div class="glossary" id="glossary"></div>
+  </section>
+
+  <p class="muted">데이터: Yahoo Finance 공개 시세(수정 종가). 계산: gs_quant.timeseries. 이 화면은 학습용이며 투자 권유가 아닙니다. 투자 결과에 대한 책임은 투자자 본인에게 있습니다.</p>
+</div>
+
+<div id="tooltip" role="tooltip"></div>
+
+<script>
+// 초보자용 설명: 제목, 쉬운 설명, 사용한 gs_quant 함수
+const TIPS = {
+  ticker: ["티커(종목 코드)", "주식마다 붙은 고유 이름표입니다. 미국 주식은 AAPL(애플)처럼 영어, 한국 주식은 6자리 숫자 뒤에 코스피는 .KS, 코스닥은 .KQ를 붙입니다. 예: 삼성전자 005930.KS"],
+  range: ["분석 기간", "얼마나 과거부터의 가격을 볼지 정합니다. 기간이 길수록 장기 흐름이, 짧을수록 최근 흐름이 잘 보입니다."],
+  window: ["이동 구간 (Window)", "이동평균·변동성처럼 '최근 며칠'을 기준으로 계산하는 지표에서 그 며칠을 정합니다. 주식시장은 한 달에 약 22일 열리므로 22일은 '최근 한 달'입니다.", "gs_quant.timeseries.Window"],
+  benchmark: ["비교 기준 (벤치마크)", "내 종목이 시장 전체와 비교해 얼마나 움직이는지 보려고 쓰는 기준 지수입니다. 미국 주식은 S&P 500, 한국 주식은 KOSPI가 일반적입니다."],
+  compare: ["수익률 비교", "가격 단위가 다른 종목(예: 원화 vs 달러)도 공정하게 비교하려고 모두 시작점을 100으로 맞췄습니다."],
+  last_price: ["현재가", "가장 최근 거래일의 종가(장 마감 가격)입니다. 배당·액면분할을 반영한 수정 종가 기준입니다."],
+  total_return: ["기간 수익률", "분석 기간 시작일에 샀다면 지금까지 몇 % 벌었거나 잃었는지입니다.", "gs_quant.timeseries.returns"],
+  cagr: ["연평균 수익률 (CAGR)", "기간 수익률을 '1년에 평균 몇 %씩 불어났나'로 바꾼 값입니다. 기간이 다른 투자를 비교할 때 씁니다."],
+  volatility: ["변동성", "가격이 얼마나 크게 출렁이는지를 1년 기준 %로 나타낸 위험 지표입니다. 20%면 1년 동안 대략 ±20% 범위에서 움직이는 일이 흔하다는 뜻입니다. 낮을수록 안정적입니다.", "gs_quant.timeseries.volatility"],
+  max_drawdown: ["최대 낙폭 (MDD)", "기간 중 최고점에서 최저점까지 가장 크게 떨어졌던 비율입니다. 최악의 타이밍에 샀다면 겪었을 손실입니다. -30%면 고점에서 30% 빠진 적이 있다는 뜻입니다.", "gs_quant.timeseries.max_drawdown"],
+  drawdown: ["고점 대비 하락폭", "매일매일 '지금까지의 최고가보다 몇 % 아래에 있나'를 그린 선입니다. 0으로 돌아오면 최고가를 회복한 것입니다."],
+  sharpe: ["샤프 지수", "감수한 위험(변동성) 1단위당 얼마나 수익을 냈는지 보여주는 '가성비' 지표입니다. 1 이상이면 좋은 편, 2 이상이면 매우 좋은 편, 0 아래면 위험만 지고 손해 본 것입니다. (여기서는 무위험 금리를 0으로 단순화)"],
+  beta: ["베타", "시장(벤치마크)이 1% 움직일 때 이 종목이 평균 몇 % 움직이는지입니다. 1.5면 시장보다 1.5배 크게, 0.5면 절반만 움직입니다. 시장과 거래 시간이 다른 해외 지수와 비교하면 낮게 나올 수 있습니다.", "gs_quant.timeseries.beta"],
+  rsi: ["RSI (상대강도지수)", "최근 14일 동안 오른 힘과 내린 힘을 비교한 0~100 사이 값입니다. 70 이상은 '너무 많이 올라 과열', 30 이하는 '너무 많이 떨어져 침체'로 봅니다. 단, 과열이 더 이어지는 경우도 많아 단독 매매 신호로 쓰긴 어렵습니다.", "gs_quant.timeseries.relative_strength_index"],
+  zscore: ["Z-점수", "현재 가격이 최근 평균에서 '평소 흔들림의 몇 배'만큼 떨어져 있는지입니다. 0이면 평균, +2면 평소보다 훨씬 높고, -2면 훨씬 낮은 상태입니다.", "gs_quant.timeseries.zscores"],
+  bollinger: ["볼린저 밴드", "이동평균선 위아래로 '평소 흔들림 × 2'만큼 띠를 그린 것입니다. 가격은 대부분 이 띠 안에서 움직이므로, 띠를 벗어나면 평소보다 강한 움직임이 나온 것입니다.", "gs_quant.timeseries.bollinger_bands"],
+  ma: ["이동평균", "최근 N일 가격의 평균을 이어 그린 선입니다. 들쭉날쭉한 가격을 부드럽게 만들어 큰 흐름(추세)을 보여줍니다.", "gs_quant.timeseries.moving_average"],
+  correlation: ["상관관계", "두 종목이 얼마나 같은 방향으로 움직이는지 -1~1 사이로 나타냅니다. 분산투자를 할 때는 상관관계가 낮은 종목끼리 섞는 것이 위험을 줄이는 데 유리합니다.", "gs_quant.timeseries.correlation"],
+};
+
+// 카드 값 해석: [기준값 비교 함수, 문구, 색]
+const CARDS = [
+  ["last_price", (v, cur) => fmtNum(v) + (cur ? " " + cur : ""), () => null],
+  ["total_return", (v) => pct(v), (v) => v >= 0 ? ["수익 구간", "good"] : ["손실 구간", "bad"]],
+  ["cagr", (v) => pct(v), (v) => v >= 15 ? ["매우 높은 편", "good"] : v >= 5 ? ["양호", "good"] : v >= 0 ? ["낮은 편", "warn"] : ["마이너스", "bad"]],
+  ["volatility", (v) => pct(v, false), (v) => v < 15 ? ["안정적 (낮음)", "good"] : v < 30 ? ["보통", "warn"] : ["출렁임 큼 (높음)", "bad"]],
+  ["max_drawdown", (v) => pct(v), (v) => v > -10 ? ["하락 작음", "good"] : v > -25 ? ["보통", "warn"] : ["큰 하락 경험", "bad"]],
+  ["sharpe", (v) => v == null ? "-" : v.toFixed(2), (v) => v == null ? null : v >= 1 ? ["위험 대비 수익 좋음", "good"] : v >= 0 ? ["보통", "warn"] : ["위험 대비 손해", "bad"]],
+  ["rsi", (v) => v == null ? "-" : v.toFixed(1), (v) => v == null ? null : v >= 70 ? ["과열 구간", "bad"] : v <= 30 ? ["침체 구간", "warn"] : ["중립", "good"]],
+  ["beta", (v) => v == null ? "-" : v.toFixed(2), (v) => v == null ? ["비교 기준 없음", "warn"] : v > 1.2 ? ["시장보다 크게 움직임", "warn"] : v < 0.8 ? ["시장보다 덜 움직임", "good"] : ["시장과 비슷", "good"]],
+];
+
+const COLORS = ["#2f6fde", "#e8590c", "#1a9a5b", "#9c36b5", "#c92a2a"];
+let data = null, current = null, charts = {};
+
+function pct(v, sign = true) { return v == null ? "-" : (sign && v > 0 ? "+" : "") + v.toFixed(1) + "%"; }
+function fmtNum(v) { return v >= 1000 ? Math.round(v).toLocaleString("ko-KR") : v.toFixed(2); }
+function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+// 툴팁: data-tip 키가 있는 요소에 마우스를 올리거나 탭하면 표시
+const tip = document.getElementById("tooltip");
+function showTip(el) {
+  const t = TIPS[el.dataset.tip];
+  if (!t) return;
+  tip.innerHTML = `<b>${t[0]}</b>${t[1]}${t[2] ? `<span class="fn">사용 함수: ${t[2]}</span>` : ""}`;
+  tip.classList.add("show");
+  const r = el.getBoundingClientRect();
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), innerWidth - w - 8);
+  let y = r.bottom + 8;
+  if (y + h > innerHeight - 8) y = r.top - h - 8;
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+document.addEventListener("mouseover", (e) => { const el = e.target.closest("[data-tip]"); el ? showTip(el) : tip.classList.remove("show"); });
+document.addEventListener("click", (e) => { const el = e.target.closest("[data-tip]"); el ? showTip(el) : tip.classList.remove("show"); });
+document.addEventListener("scroll", () => tip.classList.remove("show"), true);
+
+// 용어 사전
+document.getElementById("glossary").innerHTML = ["volatility", "max_drawdown", "sharpe", "beta", "rsi", "zscore", "bollinger", "ma", "correlation", "cagr", "ticker", "benchmark"]
+  .map((k) => `<div data-tip="${k}"><b>${TIPS[k][0]}</b>${TIPS[k][1].split(". ")[0]}.</div>`).join("");
+
+document.querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => {
+  const input = document.getElementById("tickers");
+  const list = input.value.split(",").map((s) => s.trim()).filter(Boolean);
+  if (!list.includes(b.dataset.t)) list.push(b.dataset.t);
+  input.value = list.slice(-5).join(", ");
+}));
+
+function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+function lineChart(id, labels, datasets, opts = {}) {
+  charts[id]?.destroy();
+  const grid = css("--line"), text = css("--muted");
+  charts[id] = new Chart(document.getElementById(id), {
+    type: "line",
+    data: { labels, datasets: datasets.map((d) => ({ pointRadius: 0, borderWidth: 1.8, tension: 0.1, spanGaps: true, ...d })) },
+    options: {
+      responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+      plugins: { legend: { display: datasets.filter((d) => d.label).length > 1, labels: { color: text, boxWidth: 12, filter: (i) => !!i.text } },
+        annotation: undefined },
+      scales: {
+        x: { ticks: { color: text, maxTicksLimit: 6, maxRotation: 0 }, grid: { display: false } },
+        y: { ticks: { color: text }, grid: { color: grid }, ...opts.y },
+      },
+    },
+  });
+}
+
+function refLine(labels, value, color) {
+  return { label: "", data: labels.map(() => value), borderColor: color, borderDash: [4, 4], borderWidth: 1 };
+}
+
+function renderCompare() {
+  const tickers = data.tickers.filter((t) => data.compare[t]);
+  const labels = [...new Set(tickers.flatMap((t) => data.compare[t].dates))].sort();
+  const sets = tickers.map((t, i) => {
+    const m = Object.fromEntries(data.compare[t].dates.map((d, j) => [d, data.compare[t].values[j]]));
+    return { label: data.results[t].meta.name, data: labels.map((d) => m[d] ?? null), borderColor: COLORS[i % COLORS.length] };
+  });
+  lineChart("c-compare", labels, sets);
+  document.getElementById("compare-panel").hidden = false;
+}
+
+function renderDetail(t) {
+  current = t;
+  document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b.dataset.t === t));
+  const r = data.results[t];
+  document.getElementById("sample-banner").innerHTML = r.meta.sample
+    ? `<div class="banner warn-b">실시간 시세를 가져오지 못해 <b>예시 데이터</b>로 계산했습니다. 티커가 맞는지, 인터넷이 연결되어 있는지 확인해 주세요.</div>` : "";
+  if (r.error) {
+    document.getElementById("cards").innerHTML = `<div class="banner warn-b">${esc(r.error)}</div>`;
+    for (const id of Object.keys(charts)) if (id !== "c-compare") { charts[id].destroy(); delete charts[id]; }
+    return;
+  }
+
+  document.getElementById("cards").innerHTML = CARDS.map(([k, fmt, judge]) => {
+    const v = r.stats[k];
+    const j = judge(v);
+    return `<div class="card"><div class="k"><span class="term" data-tip="${k}">${TIPS[k][0]}</span></div>
+      <div class="v">${fmt(v, r.meta.currency)}</div><div class="note ${j ? j[1] : ""}">${j ? j[0] : "&nbsp;"}</div></div>`;
+  }).join("");
+
+  const L = r.price.dates, accent = css("--accent"), muted = css("--muted");
+  lineChart("c-price", L, [
+    { label: "가격", data: r.price.values, borderColor: accent },
+    { label: "이동평균", data: r.ma.values, borderColor: "#e8590c", borderWidth: 1.2 },
+    { label: "밴드 상단", data: r.bb_upper.values, borderColor: muted, borderWidth: 1, borderDash: [3, 3] },
+    { label: "밴드 하단", data: r.bb_lower.values, borderColor: muted, borderWidth: 1, borderDash: [3, 3] },
+  ]);
+  lineChart("c-vol", r.volatility.dates, [{ label: "변동성(%)", data: r.volatility.values, borderColor: "#9c36b5" }]);
+  lineChart("c-dd", r.drawdown.dates, [{ label: "하락폭(%)", data: r.drawdown.values, borderColor: css("--bad"), fill: true, backgroundColor: "rgba(209,66,63,.12)" }], { y: { max: 0 } });
+  lineChart("c-rsi", r.rsi.dates, [{ label: "RSI", data: r.rsi.values, borderColor: accent }, refLine(r.rsi.dates, 70, css("--bad")), refLine(r.rsi.dates, 30, css("--warn"))], { y: { min: 0, max: 100 } });
+  lineChart("c-z", r.zscore.dates, [{ label: "Z-점수", data: r.zscore.values, borderColor: "#1a9a5b" }, refLine(r.zscore.dates, 2, muted), refLine(r.zscore.dates, -2, muted)]);
+  if (r.beta) lineChart("c-beta", r.beta.dates, [{ label: "베타", data: r.beta.values, borderColor: "#e8590c" }, refLine(r.beta.dates, 1, muted)]);
+  else { charts["c-beta"]?.destroy(); delete charts["c-beta"]; }
+}
+
+function renderCorr() {
+  const ts = data.tickers.filter((t) => data.compare[t]);
+  if (ts.length < 2) { document.getElementById("corr-panel").hidden = true; return; }
+  const color = (v) => v == null ? "" : v >= 0.7 ? "bad" : v >= 0.3 ? "warn" : "good";
+  let html = `<div style="overflow-x:auto"><table class="corr"><tr><th></th>${ts.map((t) => `<th>${esc(t)}</th>`).join("")}</tr>`;
+  for (const a of ts) {
+    html += `<tr><th>${esc(t2name(a))}</th>` + ts.map((b) => {
+      const v = data.correlation[`${a}|${b}`];
+      return `<td class="${a === b ? "" : color(v)}">${v == null ? "-" : v.toFixed(2)}</td>`;
+    }).join("") + "</tr>";
+  }
+  html += `</table></div><p class="muted"><span class="good">초록</span>: 분산 효과 큼 · <span class="warn">노랑</span>: 보통 · <span class="bad">빨강</span>: 같이 움직임 (분산 효과 작음)</p>`;
+  document.getElementById("corr").innerHTML = html;
+  document.getElementById("corr-panel").hidden = false;
+}
+function t2name(t) { return data.results[t]?.meta.name || t; }
+
+async function run() {
+  const btn = document.getElementById("run");
+  btn.disabled = true; btn.textContent = "계산 중…";
+  document.getElementById("status").innerHTML = `<div class="banner">시세를 받아 gs_quant로 계산하고 있습니다…</div>`;
+  try {
+    const q = new URLSearchParams({
+      tickers: document.getElementById("tickers").value,
+      range: document.getElementById("range").value,
+      window: document.getElementById("window").value,
+      benchmark: document.getElementById("benchmark").value,
+    });
+    const res = await fetch("/api/analyze?" + q);
+    if (!res.ok) throw new Error(await res.text());
+    data = await res.json();
+    document.getElementById("tabs").innerHTML = data.tickers.map((t) =>
+      `<button class="tab" data-t="${esc(t)}">${esc(t2name(t))}</button>`).join("");
+    document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => renderDetail(b.dataset.t)));
+    renderCompare();
+    document.getElementById("detail-panel").hidden = false;
+    renderDetail(data.tickers.includes(current) ? current : data.tickers[0]);
+    renderCorr();
+    document.getElementById("status").innerHTML = "";
+  } catch (e) {
+    document.getElementById("status").innerHTML = `<div class="banner warn-b">분석에 실패했습니다: ${esc(e.message).slice(0, 300)}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = "분석하기";
+  }
+}
+document.getElementById("run").addEventListener("click", run);
+document.getElementById("tickers").addEventListener("keydown", (e) => e.key === "Enter" && run());
+run();
+</script>
+</body>
+</html>

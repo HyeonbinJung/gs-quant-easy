@@ -1,8 +1,10 @@
-# Documentation Overview
+# 문서 개요
 
-gs_quant documentation is organized by core functionality outlined below.
-Within each group, you will find tutorials introducing core ideas and functions (this is a great place to start) and
-examples providing a searchable library of short specific snippets.
+gs_quant 문서는 아래와 같이 핵심 기능별로 정리되어 있습니다.
+각 그룹에는 핵심 개념과 함수를 소개하는 튜토리얼(tutorials, 처음 시작하기 좋은 곳)과
+짧고 구체적인 코드 조각을 찾아볼 수 있는 예제(examples) 모음이 있습니다.
+
+> 한국어 시작 가이드: [GETTING_STARTED.ko.md](../../GETTING_STARTED.ko.md)
 
 - 📁 **00_data**
   - 📁 00_datasets
