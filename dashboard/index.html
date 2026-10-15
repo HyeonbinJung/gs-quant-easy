@@ -114,7 +114,10 @@
 <nav class="nav">
   <button data-view="analyze" class="active" data-tt="종목 분석" data-tb="종목 하나하나의 수익률, 위험, 기술적 지표를 한 화면에서 봅니다. 처음이라면 여기서 시작하세요.">종목 분석</button>
   <button data-view="backtest" data-tt="포트폴리오 백테스트" data-tb="여러 종목을 정한 비중으로 담아 과거에 투자했다면 어땠을지 계산합니다. 리밸런싱 주기와 매매 비용까지 반영합니다.">포트폴리오 백테스트</button>
-  <button data-view="lab" data-tt="함수 실험실" data-tb="계정 없이 쓸 수 있는 gs_quant 함수 87가지를 하나씩 골라 직접 실행해 봅니다. 함수마다 쉬운 설명과 파이썬 코드가 함께 나옵니다.">함수 실험실</button>
+  <button data-view="strategy" data-tt="전략 백테스트" data-tb="'매달 적립식으로 사기', '이동평균보다 많이 떨어지면 사기' 같은 매매 규칙을 과거 데이터로 시험해 봅니다. 매매 장부와 승률까지 보여줍니다.">전략 백테스트</button>
+  <button data-view="lab" data-tt="함수 실험실" data-tb="계정 없이 쓸 수 있는 gs_quant 함수 97가지를 하나씩 골라 직접 실행해 봅니다. 함수마다 쉬운 설명과 파이썬 코드가 함께 나옵니다.">함수 실험실</button>
+  <button data-view="instruments" data-tt="파생상품 살펴보기" data-tb="스왑, 옵션, 선물환 같은 파생상품 15종을 직접 만들어 보고, 구성 요소와 만기 손익 구조를 그래프로 봅니다.">파생상품 살펴보기</button>
+  <button data-view="epidemic" data-tt="전염병 모델" data-tb="감염병 확산을 계산하는 SIR·SEIR 모델입니다. 코로나19 때 경제·시장 영향 분석에 쓰였습니다. 전파율을 바꾸며 확산 곡선이 어떻게 달라지는지 봅니다.">전염병 모델</button>
   <button data-view="dates" data-tt="날짜·이자 계산기" data-tb="영업일 수, N영업일 뒤 날짜, 이자 계산 기간 비율과 이자를 계산합니다. 채권·예금 공부에 유용합니다.">날짜·이자 계산기</button>
 </nav>
 
@@ -268,6 +271,67 @@
     <h2 style="margin-top:18px">성과 비교</h2>
     <div style="overflow-x:auto"><table class="stats" id="bt-stats"></table></div>
     <p class="muted" id="bt-insight"></p>
+    <h2 style="margin-top:18px">비중 변화 <span class="help" data-tip="drift">?</span></h2>
+    <p class="chart-desc">선택한 리밸런싱 주기에서 종목별 실제 비중(%)이 어떻게 움직였는지 보여줍니다. gs_quant <code>backtest_basket</code>으로 계산했습니다.</p>
+    <div class="chart-box"><canvas id="c-drift"></canvas></div>
+  </section>
+</div>
+
+<!-- ============================ 전략 백테스트 -->
+<div class="view" id="view-strategy" hidden>
+  <section class="panel">
+    <h2>전략 백테스트 <span class="help" data-tip="strategy_bt">?</span></h2>
+    <p class="intro">매매 규칙을 정하면 gs_quant 백테스트 엔진(<code>PredefinedAssetEngine</code>)이 과거 데이터로 하루하루 신호를 확인하며 사고팝니다.</p>
+    <div class="tabs" id="st-tabs" style="margin-top:12px"></div>
+    <div class="explain" id="st-explain"></div>
+    <div class="form" id="st-form"></div>
+    <div id="st-status"></div>
+  </section>
+  <section class="panel" id="st-result" hidden>
+    <div class="cards" id="st-cards"></div>
+    <h2>자산 곡선 <span class="help" data-tip="equity">?</span></h2>
+    <p class="chart-desc">전략을 따랐을 때의 총자산(현금 + 보유 주식)과, 같은 돈으로 첫날 전부 사서 그대로 들고 있었을 때를 비교합니다.</p>
+    <div class="chart-box tall"><canvas id="c-st"></canvas></div>
+    <h2 style="margin-top:18px">가격과 매매 시점</h2>
+    <p class="chart-desc">▲ 매수(또는 공매도 청산), ▼ 매도(또는 공매도) 시점입니다.</p>
+    <div class="chart-box tall"><canvas id="c-st-px"></canvas></div>
+    <h2 style="margin-top:18px">매매 장부 <span class="help" data-tip="ledger">?</span></h2>
+    <div style="overflow-x:auto; max-height:380px; overflow-y:auto"><table class="stats" id="st-ledger"></table></div>
+  </section>
+</div>
+
+<!-- ============================ 파생상품 살펴보기 -->
+<div class="view" id="view-instruments" hidden>
+  <div class="lab">
+    <section class="panel fn-list"><div id="in-items"></div></section>
+    <div>
+      <section class="panel" id="in-detail"></section>
+      <section class="panel" id="in-output" hidden>
+        <h2>만기 손익 구조 <span class="help" data-tip="payoff">?</span></h2>
+        <p class="chart-desc" id="in-note"></p>
+        <div class="chart-box tall"><canvas id="c-in"></canvas></div>
+        <h2 style="margin-top:18px">gs_quant 상품 객체 <span class="help" data-tip="inst_obj">?</span></h2>
+        <div style="overflow-x:auto"><table class="stats" id="in-fields"></table></div>
+        <div class="codebox" id="in-code"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ 전염병 모델 -->
+<div class="view" id="view-epidemic" hidden>
+  <section class="panel">
+    <h2>전염병 확산 모델 <span class="help" data-tip="epi">?</span></h2>
+    <p class="intro">gs_quant <code>models.epidemiology</code>의 모델로 감염병 확산을 계산합니다. 골드만삭스는 코로나19 시기 경제 재개 시점과 시장 영향을 분석하는 데 이 모델을 썼습니다.</p>
+    <div class="tabs" id="ep-tabs" style="margin-top:12px"></div>
+    <p class="intro" id="ep-desc"></p>
+    <div class="form" id="ep-form"></div>
+    <div id="ep-status"></div>
+  </section>
+  <section class="panel" id="ep-result" hidden>
+    <div class="cards" id="ep-cards"></div>
+    <div class="chart-box tall"><canvas id="c-ep"></canvas></div>
+    <div id="ep-fit"></div>
   </section>
 </div>
 
@@ -359,6 +423,15 @@ const TIPS = {
   src: ["입력 데이터 종류", "함수에 가격을 그대로 넣을지, 가격을 일별 수익률(하루 변화율)로 바꿔서 넣을지 정합니다. 함수마다 알맞은 기본값이 정해져 있으니 처음에는 그대로 두세요."],
   fx: ["X 종목", "함수에 넣을 첫 번째(주) 종목입니다."],
   fy: ["Y 종목 (비교 대상)", "X와 비교하거나 함께 계산할 두 번째 종목입니다. 시장 지수(^GSPC = S&P 500, ^KS11 = KOSPI)를 넣으면 시장과 비교할 수 있습니다."],
+  drift: ["비중 변화", "리밸런싱 사이에는 오른 종목의 비중이 커지고 내린 종목의 비중이 작아집니다. 리밸런싱 날 원래 비중으로 돌아오기 때문에 톱니 모양이 됩니다. 비중이 크게 틀어질수록 리밸런싱의 효과(비싸진 것 팔고 싸진 것 사기)도 커집니다.", "gs_quant.timeseries.backtesting.backtest_basket"],
+  strategy_bt: ["전략 백테스트", "정해 둔 매매 규칙(언제 사고 언제 팔지)을 과거 시세에 그대로 적용해 보는 것입니다. 실제 투자 전에 규칙의 장단점을 확인할 수 있지만, 과거에 잘 맞은 규칙이 미래에도 맞는다는 보장은 없습니다.", "gs_quant.backtests.PredefinedAssetEngine"],
+  equity: ["자산 곡선", "현금과 보유 주식 가치를 합친 총자산의 변화입니다. 오른쪽으로 갈수록 우상향하고 덜 출렁일수록 좋은 전략입니다."],
+  ledger: ["매매 장부", "전략이 실제로 한 거래 기록입니다. 진입일·청산일과 각 거래의 손익(주당)을 보여줍니다. 아직 팔지 않은 거래는 '보유 중'입니다."],
+  win_rate: ["승률", "청산이 끝난 거래 중 이익으로 끝난 거래의 비율입니다. 승률이 높아도 한 번 잃을 때 크게 잃으면 전체 성과는 나쁠 수 있습니다."],
+  payoff: ["만기 손익 구조 (Payoff)", "만기 시점에 기초자산 가격(또는 금리·환율)이 얼마일 때 얼마를 벌거나 잃는지 보여주는 그래프입니다. 파생상품의 성격을 가장 빨리 이해하는 방법입니다."],
+  inst_obj: ["gs_quant 상품 객체", "gs_quant로 만든 상품의 실제 데이터 구조입니다. GS 계정이 있으면 이 객체로 바로 가격(price)과 위험(calc)을 계산할 수 있습니다."],
+  epi: ["전염병 확산 모델", "사람들을 감염 가능·감염·회복 같은 그룹으로 나누고, 그룹 사이를 오가는 속도로 확산을 계산하는 수학 모델입니다. 경제학에서는 소문·유행·신용 위기의 전염을 설명하는 데도 비슷한 구조를 씁니다.", "gs_quant.models.epidemiology"],
+  r0: ["기초감염재생산수 (R0)", "감염자 한 명이 평균 몇 명에게 병을 옮기는지입니다(전파율 ÷ 회복률). 1보다 크면 확산되고, 1보다 작으면 점점 사라집니다."],
   overlay: ["입력 데이터 같이 보기", "결과와 함께 원래 입력 데이터를 오른쪽 축에 겹쳐 그립니다. 함수가 데이터를 어떻게 바꿨는지 비교하기 좋습니다."],
 };
 
@@ -447,7 +520,7 @@ function renderCompare() {
 
 function renderDetail(t) {
   current = t;
-  document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b.dataset.t === t));
+  document.querySelectorAll("#tabs .tab").forEach((b) => b.classList.toggle("active", b.dataset.t === t));
   const r = data.results[t];
   document.getElementById("sample-banner").innerHTML = r.meta.sample
     ? `<div class="banner warn-b">실시간 시세를 가져오지 못해 <b>예시 데이터</b>로 계산했습니다. 티커가 맞는지, 인터넷이 연결되어 있는지 확인해 주세요.</div>` : "";
@@ -512,7 +585,7 @@ async function run() {
     data = await res.json();
     document.getElementById("tabs").innerHTML = data.tickers.map((t) =>
       `<button class="tab" data-t="${esc(t)}">${esc(t2name(t))}</button>`).join("");
-    document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => renderDetail(b.dataset.t)));
+    document.querySelectorAll("#tabs .tab").forEach((b) => b.addEventListener("click", () => renderDetail(b.dataset.t)));
     renderCompare();
     document.getElementById("detail-panel").hidden = false;
     renderDetail(data.tickers.includes(current) ? current : data.tickers[0]);
@@ -539,6 +612,9 @@ function showView(name) {
     if (name === "lab") initLab();
     if (name === "backtest") runBacktest();
     if (name === "dates") runDates();
+    if (name === "strategy") initStrategy();
+    if (name === "instruments") initInstruments();
+    if (name === "epidemic") initEpidemic();
   }
   try { localStorage.setItem("gsqe-view", name); } catch (e) {}
   history.replaceState(null, "", "#" + name);
@@ -589,7 +665,7 @@ async function runBacktest() {
       const isChosen = n === d.chosen, isPort = portfolios.includes(n);
       return {
         label: n, data: labels.map((x) => m[x] ?? null),
-        borderColor: isChosen ? css("--accent") : isPort ? css("--muted") : COLORS[(i + 1) % COLORS.length],
+        borderColor: isChosen ? css("--accent") : isPort ? css("--muted") : COLORS[(d.names.indexOf(n) + 1) % COLORS.length],
         borderWidth: isChosen ? 3 : isPort ? 1.2 : 1.2,
         borderDash: isPort && !isChosen ? [4, 3] : [],
         hidden: isPort && !isChosen && n !== "사서 그대로 두기",
@@ -612,6 +688,8 @@ async function runBacktest() {
       `개별 종목 중 가장 나빴던 낙폭은 ${pct(worstSingle)}였고, 위험 대비 성과(샤프 지수)가 가장 좋았던 종목은 ${esc(best)}입니다. ` +
       `범례를 눌러 다른 리밸런싱 주기 선을 켜고 끌 수 있습니다.`;
     document.getElementById("bt-result").hidden = false;
+    const dl = d.weights_drift[0].dates;
+    lineChart("c-drift", dl, d.weights_drift.map((w, i) => ({ label: w.name, data: w.values, borderColor: COLORS[(i + 1) % COLORS.length] })), { y: { ticks: { color: css("--muted"), callback: (v) => v + "%" } } });
     document.getElementById("bt-status").innerHTML = "";
   } catch (e) {
     document.getElementById("bt-status").innerHTML = banner(esc(e.message), true);
@@ -816,9 +894,231 @@ async function runDates() {
 }
 document.getElementById("d-run").addEventListener("click", runDates);
 
+// ============================================================ 공통: 설정 폼
+function field(p, prefix) {
+  const id = prefix + p.name;
+  const tt = `data-tt="${attr(p.label)}" data-tb="${attr(p.tip)}"`;
+  const lab = `<label><span class="term" ${tt}>${esc(p.label)}</span> <span class="help" ${tt}>?</span></label>`;
+  if (p.type === "enum")
+    return `<div>${lab}<select id="${id}">${p.options.map(([v, l]) => `<option value="${attr(v)}" ${v === p.default ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></div>`;
+  if (p.type === "bool") return `<div class="check"><input type="checkbox" id="${id}" ${p.default ? "checked" : ""}>${lab}</div>`;
+  if (p.type === "text") return `<div>${lab}<input id="${id}" value="${attr(p.default)}"></div>`;
+  return `<div>${lab}<input type="number" id="${id}" value="${p.default}" ${p.min != null ? `min="${p.min}"` : ""} ${p.max != null ? `max="${p.max}"` : ""} step="${p.step || (p.type === "int" ? 1 : "any")}"></div>`;
+}
+function readFields(params, prefix) {
+  const out = {};
+  for (const p of params) {
+    const el = document.getElementById(prefix + p.name);
+    if (!el) continue;
+    out[p.name] = p.type === "bool" ? el.checked : p.type === "int" ? parseInt(el.value, 10) : p.type === "float" ? parseFloat(el.value) : el.value;
+  }
+  return out;
+}
+function money(v, cur) {
+  if (v == null) return "-";
+  const a = Math.abs(v);
+  const s = a >= 1000 ? Math.round(v).toLocaleString("ko-KR") : v.toFixed(2);
+  return s + (cur ? " " + cur : "");
+}
+function statCard(tipAttrs, title, value, note, cls) {
+  return `<div class="card"><div class="k"><span class="term" ${tipAttrs}>${title}</span></div><div class="v">${value}</div><div class="note ${cls || "muted"}">${note || "&nbsp;"}</div></div>`;
+}
+
+// ============================================================ 전략 백테스트
+let stCatalog = null, stCurrent = null;
+async function initStrategy() {
+  stCatalog = await (await fetch("/api/strategies")).json();
+  document.getElementById("st-tabs").innerHTML = stCatalog.strategies.map((s) =>
+    `<button class="tab" data-id="${s.id}" data-tt="${attr(s.title)}" data-tb="${attr(s.desc)}" data-fn="gs_quant.backtests.triggers.${s.trigger}">${esc(s.title)}</button>`).join("");
+  document.querySelectorAll("#st-tabs .tab").forEach((b) => b.addEventListener("click", () => selectStrategy(b.dataset.id)));
+  selectStrategy(stCatalog.strategies[0].id);
+}
+function selectStrategy(id) {
+  stCurrent = stCatalog.strategies.find((s) => s.id === id);
+  document.querySelectorAll("#st-tabs .tab").forEach((b) => b.classList.toggle("active", b.dataset.id === id));
+  document.getElementById("st-explain").innerHTML =
+    `<div><b>어떤 전략인가요?</b>${esc(stCurrent.desc)}</div><div><b>결과는 이렇게 보세요</b>${esc(stCurrent.read)}</div>
+     <div><b>사용하는 gs_quant 기능</b><code>PredefinedAssetEngine</code> + <code>${esc(stCurrent.trigger)}</code> + <code>AddTradeAction</code></div>`;
+  document.getElementById("st-form").innerHTML =
+    `<div><label>종목 <span class="help" data-tip="ticker">?</span></label><input id="st-ticker" value="${attr(document.getElementById("st-ticker")?.value || "005930.KS")}"></div>
+     <div><label>분석 기간 <span class="help" data-tip="range">?</span></label><select id="st-range"><option value="1y">1년</option><option value="2y" selected>2년</option><option value="5y">5년</option></select></div>` +
+    stCurrent.params.concat(stCatalog.common).map((p) => field(p, "st-")).join("") +
+    `<button class="primary" id="st-run">전략 실행</button>`;
+  document.getElementById("st-run").addEventListener("click", runStrategy);
+  runStrategy();
+}
+async function runStrategy() {
+  const btn = document.getElementById("st-run");
+  btn.disabled = true; btn.textContent = "계산 중…";
+  document.getElementById("st-status").innerHTML = banner("백테스트 엔진이 하루하루 신호를 확인하며 매매하고 있습니다…");
+  try {
+    const d = await postJSON("/api/strategy", {
+      id: stCurrent.id, ticker: document.getElementById("st-ticker").value, range: document.getElementById("st-range").value,
+      params: readFields(stCurrent.params.concat(stCatalog.common), "st-"),
+    });
+    const s = d.summary, cur = d.currency;
+    const diff = s.strategy.total_return - s.buy_hold.total_return;
+    const tt = (k) => `data-tip="${k}"`;
+    document.getElementById("st-cards").innerHTML = [
+      statCard(tt("equity"), "전략 최종 자산", money(s.strategy.final, cur), `시작 ${money(d.capital, cur)}`),
+      statCard(tt("total_return"), "전략 수익률", pct(s.strategy.total_return), `그대로 보유 ${pct(s.buy_hold.total_return)}`, diff >= 0 ? "good" : "bad"),
+      statCard(tt("max_drawdown"), "전략 최대 낙폭", pct(s.strategy.max_drawdown), `그대로 보유 ${pct(s.buy_hold.max_drawdown)}`, s.strategy.max_drawdown > s.buy_hold.max_drawdown ? "good" : "warn"),
+      statCard(tt("ledger"), "거래 수", `${s.n_trades}건`, `청산 ${s.n_closed} · 보유 중 ${s.n_open}`),
+      statCard(tt("win_rate"), "승률", s.win_rate == null ? "-" : s.win_rate.toFixed(1) + "%", s.win_rate == null ? "청산된 거래 없음" : (s.win_rate >= 50 ? "이긴 거래가 더 많음" : "진 거래가 더 많음"), s.win_rate == null ? "muted" : s.win_rate >= 50 ? "good" : "warn"),
+      statCard(tt("ledger"), "평균 거래 손익(주당)", money(s.avg_pnl, cur), "청산된 거래 기준"),
+      statCard(tt("ledger"), "실현 손익 합계(주당)", money(s.realized_pnl, cur), "청산된 거래 기준", s.realized_pnl >= 0 ? "good" : "bad"),
+      statCard(tt("volatility"), "전략 변동성", pct(s.strategy.volatility, false), `그대로 보유 ${pct(s.buy_hold.volatility, false)}`),
+    ].join("");
+
+    lineChart("c-st", d.perf.dates, [
+      { label: `전략: ${stCurrent.title}`, data: d.perf.values, borderColor: css("--accent"), borderWidth: 2.4 },
+      { label: "첫날 전부 사서 보유", data: alignTo(d.perf.dates, d.buy_hold), borderColor: css("--muted"), borderDash: [4, 3] },
+    ]);
+
+    const buys = {}, sells = {};
+    for (const t of d.trades) {
+      const isShort = t.side === "공매도";
+      (isShort ? sells : buys)[t.open] = t.open_value;
+      if (t.close) (isShort ? buys : sells)[t.close] = t.close_value;
+    }
+    const L = d.price.dates;
+    lineChart("c-st-px", L, [
+      { label: "가격", data: d.price.values, borderColor: css("--muted"), borderWidth: 1.4 },
+      { label: "▲ 매수", data: L.map((x) => buys[x] ?? null), borderColor: css("--good"), backgroundColor: css("--good"), showLine: false, pointRadius: 5, pointStyle: "triangle" },
+      { label: "▼ 매도", data: L.map((x) => sells[x] ?? null), borderColor: css("--bad"), backgroundColor: css("--bad"), showLine: false, pointRadius: 5, pointStyle: "triangle", rotation: 180 },
+    ]);
+
+    document.getElementById("st-ledger").innerHTML =
+      `<tr><th>#</th><th>방향</th><th>진입일</th><th>진입 가격</th><th>청산일</th><th>청산 가격</th><th>상태</th><th>손익(주당)</th></tr>` +
+      d.trades.slice().reverse().map((t, i) => `<tr><td>${d.trades.length - i}</td><td>${t.side}</td><td>${t.open}</td><td>${money(t.open_value)}</td><td>${t.close || "-"}</td>
+        <td>${money(t.close_value)}</td><td>${t.status}</td><td class="${t.pnl == null ? "" : t.pnl >= 0 ? "good" : "bad"}">${t.pnl == null ? "-" : money(t.pnl)}</td></tr>`).join("");
+    document.getElementById("st-result").hidden = false;
+    document.getElementById("st-status").innerHTML = "";
+  } catch (e) {
+    document.getElementById("st-status").innerHTML = banner(esc(e.message), true);
+  } finally {
+    btn.disabled = false; btn.textContent = "전략 실행";
+  }
+}
+function alignTo(dates, series) {
+  const m = Object.fromEntries(series.dates.map((x, j) => [x, series.values[j]]));
+  return dates.map((x) => m[x] ?? null);
+}
+
+// ============================================================ 파생상품 살펴보기
+let inCatalog = null, inCurrent = null;
+async function initInstruments() {
+  inCatalog = await (await fetch("/api/instruments")).json();
+  const cats = [...new Set(inCatalog.map((x) => x.cat))];
+  const box = document.getElementById("in-items");
+  box.innerHTML = cats.map((c) => `<h3>${esc(c)}</h3>` + inCatalog.filter((x) => x.cat === c).map((x) =>
+    `<a data-id="${x.id}" data-tt="${attr(x.title)}" data-tb="${attr(x.desc)}" data-fn="gs_quant.instrument.${x.id}"><span>${esc(x.title)}</span><code>${esc(x.id)}</code></a>`).join("")).join("");
+  box.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => selectInstrument(a.dataset.id)));
+  selectInstrument(inCatalog[0].id);
+}
+function selectInstrument(id) {
+  inCurrent = inCatalog.find((x) => x.id === id);
+  document.querySelectorAll("#in-items a").forEach((a) => a.classList.toggle("active", a.dataset.id === id));
+  document.getElementById("in-detail").innerHTML = `
+    <div class="fn-head"><h2>${esc(inCurrent.title)}</h2><code>gs_quant.instrument.${esc(inCurrent.id)}</code> · <span class="muted">${esc(inCurrent.cat)}</span></div>
+    <div class="explain" style="grid-template-columns:1fr 1fr">
+      <div><b>무엇인가요?</b>${esc(inCurrent.desc)}</div><div><b>이럴 때 씁니다</b>${esc(inCurrent.example)}</div></div>
+    <div class="form">${inCurrent.params.map((p) => field(p, "in-")).join("")}<button class="primary" id="in-run">상품 만들기</button></div>
+    <div id="in-status"></div>`;
+  document.getElementById("in-run").addEventListener("click", buildInstrument);
+  buildInstrument();
+}
+const camel = (s) => s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+async function buildInstrument() {
+  const params = readFields(inCurrent.params, "in-");
+  try {
+    const d = await postJSON("/api/instrument", { id: inCurrent.id, params });
+    const labels = Object.fromEntries(inCurrent.params.map((p) => [camel(p.name), p]));
+    document.getElementById("in-fields").innerHTML = `<tr><th>필드</th><th>값</th><th>설명</th></tr>` +
+      Object.entries(d.fields).map(([k, v]) => {
+        const p = labels[k];
+        const extra = { assetClass: "자산군 (gs_quant가 자동으로 붙임)", type: "상품 유형 (gs_quant가 자동으로 붙임)", fee: "수수료 (기본값 0)" }[k];
+        const desc = p ? p.label + (p.pct ? " — gs_quant에는 소수로 저장 (0.04 = 4%)" : "") : extra || "";
+        return `<tr><td><code>${esc(k)}</code></td><td>${esc(typeof v === "object" ? JSON.stringify(v) : String(v))}</td><td style="text-align:left;white-space:normal">${esc(desc)}</td></tr>`;
+      }).join("");
+    const args = Object.entries(params).map(([k, v]) => `${k}=${typeof v === "string" ? `'${v}'` : v}`).join(", ");
+    document.getElementById("in-code").textContent =
+      `from gs_quant.instrument import ${d.class}\n\ninst = ${d.class}(${args})\n# GS 계정이 있으면:\n# inst.price()            # 현재 가치\n# inst.calc(risk.DollarPrice)`;
+    const out = document.getElementById("in-output");
+    out.hidden = false;
+    if (d.payoff) {
+      document.getElementById("c-in").parentElement.hidden = false;
+      document.getElementById("in-note").textContent = d.payoff.note;
+      charts["c-in"]?.destroy();
+      const text = css("--muted"), grid = css("--line");
+      charts["c-in"] = new Chart(document.getElementById("c-in"), {
+        type: "line",
+        data: { labels: d.payoff.x, datasets: [{ label: "만기 손익", data: d.payoff.y, borderColor: css("--accent"), pointRadius: 0, borderWidth: 2.2, fill: { target: "origin", above: "rgba(26,154,91,.12)", below: "rgba(209,66,63,.12)" } }] },
+        options: {
+          responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+          plugins: { legend: { display: false }, tooltip: { callbacks: { title: (i) => `${d.payoff.x_label}: ${i[0].label}`, label: (i) => "손익: " + money(i.raw) } } },
+          scales: { x: { title: { display: true, text: d.payoff.x_label, color: text }, ticks: { color: text, maxTicksLimit: 9 }, grid: { display: false } },
+                    y: { title: { display: true, text: "손익", color: text }, ticks: { color: text }, grid: { color: grid } } },
+        },
+      });
+    } else {
+      document.getElementById("in-note").textContent = "이 상품은 손익이 기초자산 하나의 가격으로 정해지지 않아(채권: 금리·신용, CDS: 부도 여부) 손익 그래프 대신 구성 요소만 보여줍니다.";
+      charts["c-in"]?.destroy(); delete charts["c-in"];
+      document.getElementById("c-in").parentElement.hidden = true;
+    }
+    document.getElementById("in-status").innerHTML = "";
+  } catch (e) {
+    document.getElementById("in-status").innerHTML = banner(esc(e.message), true);
+  }
+}
+
+// ============================================================ 전염병 모델
+let epCatalog = null, epModel = "SIR";
+async function initEpidemic() {
+  epCatalog = await (await fetch("/api/epidemic/models")).json();
+  document.getElementById("ep-tabs").innerHTML = Object.entries(epCatalog).map(([k, m]) =>
+    `<button class="tab" data-id="${k}" data-tt="${attr(m.title)}" data-tb="${attr(m.desc)}" data-fn="gs_quant.models.epidemiology.${k}">${esc(m.title)}</button>`).join("");
+  document.querySelectorAll("#ep-tabs .tab").forEach((b) => b.addEventListener("click", () => selectEpidemic(b.dataset.id)));
+  selectEpidemic("SIR");
+}
+function selectEpidemic(k) {
+  epModel = k;
+  const m = epCatalog[k];
+  document.querySelectorAll("#ep-tabs .tab").forEach((b) => b.classList.toggle("active", b.dataset.id === k));
+  document.getElementById("ep-desc").textContent = m.desc;
+  document.getElementById("ep-form").innerHTML = m.params.map((p) => field(p, "ep-")).join("") +
+    (k === "SIR" ? `<div class="check"><input type="checkbox" id="ep-fit" checked><label for="ep-fit" style="margin:0"><span class="term" data-tt="파라미터 추정 시연" data-tb="정답 전파율·회복률로 만든 곡선에 5% 잡음을 섞어 '관측 데이터'를 만든 뒤, gs_quant EpidemicModel.fit이 잡음 낀 데이터만 보고 전파율·회복률을 다시 찾아내는지 보여줍니다. 실제 연구에서는 확진자 데이터로 이렇게 모델을 맞춥니다." data-fn="gs_quant.models.epidemiology.EpidemicModel.fit">추정(fit) 시연</span></label></div>` : "") +
+    `<button class="primary" id="ep-run">계산하기</button>`;
+  document.getElementById("ep-run").addEventListener("click", runEpidemic);
+  runEpidemic();
+}
+async function runEpidemic() {
+  const m = epCatalog[epModel];
+  try {
+    const d = await postJSON("/api/epidemic", { model: epModel, params: readFields(m.params, "ep-"), fit: !!document.getElementById("ep-fit")?.checked });
+    const n = (v) => Math.round(v).toLocaleString("ko-KR");
+    document.getElementById("ep-cards").innerHTML = [
+      statCard(`data-tip="r0"`, "R0 (전파력)", d.r0.toFixed(2), d.r0 > 1 ? "1보다 커서 확산됨" : "1보다 작아 사그라듦", d.r0 > 1 ? "bad" : "good"),
+      statCard(`data-tt="정점" data-tb="동시에 감염 중인 사람이 가장 많은 날입니다. 의료 체계 부담이 가장 큰 시점입니다."`, "감염 정점", `${d.peak_day}일째`, `동시 감염 ${n(d.peak_infected)}명`),
+      statCard(`data-tt="누적 감염 비율" data-tb="시뮬레이션 기간 동안 한 번이라도 감염된 사람의 비율입니다."`, "누적 감염 비율", d.total_infected_pct.toFixed(1) + "%", "전체 인구 대비"),
+      d.deaths != null ? statCard(`data-tt="누적 사망" data-tb="치명률을 반영한 누적 사망자 수입니다."`, "누적 사망", n(d.deaths) + "명", "시뮬레이션 종료 시점") : "",
+    ].join("");
+    const ds = d.lines.map((l, i) => ({ label: l.name, data: l.values, borderColor: COLORS[i % COLORS.length] }));
+    if (d.fit) ds.push({ label: "관측(잡음 포함) 감염", data: d.fit.observed, borderColor: css("--muted"), showLine: false, pointRadius: 1.5 });
+    lineChart("c-ep", d.days.map((x) => x + "일"), ds);
+    const p = readFields(m.params, "ep-");
+    document.getElementById("ep-fit").innerHTML = d.fit
+      ? `<p class="muted" style="margin-top:12px"><b>추정 결과:</b> 잡음 낀 데이터만 보고 찾은 전파율 ${d.fit.beta.toFixed(4)} (정답 ${p.beta}), 회복률 ${d.fit.gamma.toFixed(4)} (정답 ${p.gamma}). 실제 확진자 데이터에 모델을 맞추는 원리가 이것입니다.</p>` : "";
+    document.getElementById("ep-result").hidden = false;
+    document.getElementById("ep-status").innerHTML = "";
+  } catch (e) {
+    document.getElementById("ep-status").innerHTML = banner(esc(e.message), true);
+  }
+}
+
 {
   const fromHash = location.hash.slice(1);
-  let v = ["analyze", "backtest", "lab", "dates"].includes(fromHash) ? fromHash : null;
+  let v = ["analyze", "backtest", "strategy", "lab", "instruments", "epidemic", "dates"].includes(fromHash) ? fromHash : null;
   if (!v) { try { v = localStorage.getItem("gsqe-view"); } catch (e) {} }
   if (v && v !== "analyze") showView(v);
 }

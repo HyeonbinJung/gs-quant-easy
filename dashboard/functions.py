@@ -20,6 +20,8 @@ import datetime as dt
 import pandas as pd
 
 import gs_quant.timeseries as ts
+from gs_quant.datetime import date_range as gs_date_range
+from gs_quant.datetime import has_feb_29, is_business_day, prev_business_date, relative_date_add
 from gs_quant.datetime.date import DayCountConvention, PaymentFrequency
 from gs_quant.timeseries import Window
 from gs_quant.timeseries.algebra import FilterOperator
@@ -48,6 +50,12 @@ INTERP = {"name": "method", "label": "날짜 맞추기 방식", "type": "enum", 
           "options": [["intersect", "두 종목 모두 있는 날만"], ["step", "빈 날은 직전 값으로 채움"], ["nan", "빈 날은 비워 둠"],
                       ["zero", "빈 날은 0으로"], ["time", "시간 비례 보간"]],
           "tip": "한국과 미국처럼 휴장일이 다른 두 종목을 계산할 때 날짜가 안 맞는 날을 어떻게 처리할지 정합니다."}
+
+ANN = {"name": "annualization_factor", "label": "연환산 배수 (0=자동)", "type": "int", "default": 0, "min": 0, "max": 100000,
+       "tip": "1년에 데이터가 몇 개 있는지입니다. 일별 주식 데이터는 252(1년 거래일 수)입니다. 0이면 데이터 간격을 보고 자동으로 정합니다."}
+
+ZERO_MEAN = {"name": "assume_zero_mean", "label": "평균 0 가정", "type": "bool", "default": False,
+             "tip": "켜면 수익률의 평균을 0으로 보고 흔들림을 계산합니다. 파생상품(변동성·상관관계 스왑) 정산 방식이 이렇게 계산합니다."}
 
 RISK_FREE = {"name": "rate", "label": "무위험 금리(연, %)", "type": "float", "default": 3.0, "min": -5, "max": 30, "step": 0.1,
              "tip": "예금이나 국채처럼 위험 없이 받을 수 있는 연 이자율입니다. 이걸 넘는 수익만 '진짜 초과 수익'으로 봅니다. 한국 기준금리나 미국 국채 금리를 넣으면 됩니다."}
@@ -130,6 +138,13 @@ add(id="excess_returns", cat=CATS[0], title="초과 수익 곡선", input="x",
     code="ts.excess_returns(x, {rate} / 100)",
     run=lambda c, p: ts.excess_returns(c.x, float(p["rate"]) / 100))
 
+add(id="excess_returns_pure", cat=CATS[0], title="벤치마크 대비 초과 성과 곡선", input="xy",
+    desc="매일 X의 수익률에서 Y(벤치마크)의 수익률을 빼서 쌓아 올린 곡선입니다. '시장보다 얼마나 더 벌었나'를 보여줍니다.",
+    read="곡선이 오르면 벤치마크보다 잘한 기간, 내리면 못한 기간입니다.",
+    use="펀드·종목 성과를 시장 지수와 비교할 때(알파 확인).",
+    code="ts.econometrics.excess_returns_pure(x, y)",
+    run=lambda c, p: ts.econometrics.excess_returns_pure(c.x, c.y))
+
 add(id="geometrically_aggregate", cat=CATS[0], title="복리 누적 수익률", input="x", src="returns",
     desc="매일의 수익률을 복리로 곱해 쌓아서 '지금까지 총 몇 %'인지 계산합니다.",
     read="0.35면 기간 시작 이후 누적 35% 수익입니다.",
@@ -142,17 +157,18 @@ add(id="volatility", cat=CATS[1], title="변동성", input="x",
     desc="가격이 얼마나 크게 출렁이는지를 연 % 단위로 나타냅니다. 가장 대표적인 위험 지표입니다.",
     read="20이면 1년에 대략 ±20% 범위의 움직임이 흔하다는 뜻입니다. 대형 우량주는 보통 15~30, 성장주·코인은 그 이상입니다.",
     use="종목이 얼마나 위험한지, 지금이 평소보다 불안한 시기인지 볼 때.",
-    params=[W(), RET_TYPE],
-    code="ts.volatility(x, Window({w}, {w}), Returns.{returns_type})",
-    run=lambda c, p: ts.volatility(c.x, _w(p), Returns(p["returns_type"])))
+    params=[W(), RET_TYPE, ANN, ZERO_MEAN],
+    code="ts.volatility(x, Window({w}, {w}), Returns.{returns_type}, annualization_factor={annualization_factor} or None, assume_zero_mean={assume_zero_mean})",
+    run=lambda c, p: ts.volatility(c.x, _w(p), Returns(p["returns_type"]), annualization_factor=int(p["annualization_factor"]) or None,
+                                   assume_zero_mean=bool(p["assume_zero_mean"])))
 
 add(id="vol_swap_volatility", cat=CATS[1], title="변동성 스왑식 변동성", input="x",
     desc="파생상품 '변동성 스왑' 가격을 정할 때 쓰는 방식(로그 수익률, 평균 0 가정)으로 변동성을 계산합니다.",
     read="일반 변동성과 비슷하게 읽으면 됩니다. 계산 방식이 조금 다를 뿐입니다.",
     use="변동성 자체를 거래하는 상품을 공부할 때 일반 변동성과 비교해 보기 좋습니다.",
-    params=[{**W(), "name": "n_days"}],
-    code="ts.vol_swap_volatility(x, {n_days})",
-    run=lambda c, p: ts.vol_swap_volatility(c.x, int(p["n_days"])))
+    params=[{**W(), "name": "n_days"}, {**ANN, "default": 252}, {**ZERO_MEAN, "default": True}],
+    code="ts.vol_swap_volatility(x, {n_days}, {annualization_factor}, {assume_zero_mean})",
+    run=lambda c, p: ts.vol_swap_volatility(c.x, int(p["n_days"]), int(p["annualization_factor"]) or 252, bool(p["assume_zero_mean"])))
 
 add(id="exponential_volatility", cat=CATS[1], title="지수가중 변동성", input="x",
     desc="최근 움직임에 더 큰 가중치를 줘서 계산한 변동성입니다. 시장이 갑자기 불안해지면 일반 변동성보다 빨리 반응합니다.",
@@ -194,6 +210,14 @@ add(id="var", cat=CATS[1], title="분산", input="x", src="returns",
     code="ts.var(r, Window({w}, {w}))",
     run=lambda c, p: ts.var(c.x, _w(p)))
 
+add(id="rolling_std", cat=CATS[1], title="달력 기간 표준편차", input="x", src="returns",
+    desc="'최근 22개 데이터'가 아니라 '최근 1개월'처럼 달력 기간으로 묶어 표준편차를 계산합니다. 휴장일이 많아도 기간이 일정하게 유지됩니다.",
+    read="일별 수익률이면 그 기간의 하루 평균 흔들림입니다.",
+    use="휴장일이 다른 여러 시장을 같은 달력 기간으로 비교할 때.",
+    params=[{"name": "months", "label": "기간(개월)", "type": "int", "default": 1, "min": 1, "max": 36, "tip": "몇 개월 단위로 묶어 계산할지 정합니다."}],
+    code="ts.statistics.rolling_std(r, pd.DateOffset(months={months}))",
+    run=lambda c, p: ts.statistics.rolling_std(c.x, pd.DateOffset(months=int(p["months"]))))
+
 add(id="max_drawdown", cat=CATS[1], title="최대 낙폭 (MDD)", input="x",
     desc="최고점에서 최저점까지 가장 크게 떨어졌던 비율입니다. '최악의 타이밍에 샀다면 얼마나 잃었을까'입니다.",
     read="-0.3이면 고점 대비 30% 하락을 겪은 적이 있다는 뜻입니다. 0에 가까울수록 좋습니다.",
@@ -223,9 +247,10 @@ add(id="beta", cat=CATS[2], title="베타", input="xy",
     desc="기준(Y, 보통 시장 지수)이 1% 움직일 때 종목(X)이 평균 몇 % 움직이는지입니다.",
     read="1.5면 시장보다 1.5배 크게, 0.5면 절반만, 음수면 반대로 움직입니다.",
     use="시장이 빠질 때 내 종목이 얼마나 같이 빠질지 가늠할 때.",
-    params=[W(63)],
-    code="ts.beta(x, y, Window({w}, {w}))",
-    run=lambda c, p: ts.beta(c.x, c.y, _w(p)))
+    params=[W(63), {"name": "prices", "label": "입력이 가격", "type": "bool", "default": True,
+                    "tip": "켜 두면 넣은 데이터를 가격으로 보고 수익률로 바꿔 계산합니다. '입력 데이터'를 일별 수익률로 바꿨다면 끄세요."}],
+    code="ts.beta(x, y, Window({w}, {w}), prices={prices})",
+    run=lambda c, p: ts.beta(c.x, c.y, _w(p), bool(p["prices"])))
 
 add(id="correlation", cat=CATS[2], title="상관관계", input="xy",
     desc="두 종목이 얼마나 같은 방향으로 움직이는지 -1~1 사이 숫자로 나타냅니다.",
@@ -233,17 +258,18 @@ add(id="correlation", cat=CATS[2], title="상관관계", input="xy",
     use="분산투자할 때 서로 덜 닮은 종목을 고르기 위해.",
     params=[W(63), {"name": "type_", "label": "입력 데이터 종류", "type": "enum", "default": "prices",
                     "options": [["prices", "가격"], ["returns", "수익률"]],
-                    "tip": "넣은 데이터가 가격인지 수익률인지 알려줍니다. 가격을 넣으면 함수가 알아서 수익률로 바꿔 계산합니다."}],
-    code="ts.correlation(x, y, Window({w}, {w}), SeriesType('{type_}'))",
-    run=lambda c, p: ts.correlation(c.x, c.y, _w(p), SeriesType(p["type_"])))
+                    "tip": "넣은 데이터가 가격인지 수익률인지 알려줍니다. 가격을 넣으면 함수가 알아서 수익률로 바꿔 계산합니다."},
+            RET_TYPE, ZERO_MEAN],
+    code="ts.correlation(x, y, Window({w}, {w}), SeriesType('{type_}'), Returns.{returns_type}, {assume_zero_mean})",
+    run=lambda c, p: ts.correlation(c.x, c.y, _w(p), SeriesType(p["type_"]), Returns(p["returns_type"]), bool(p["assume_zero_mean"])))
 
 add(id="corr_swap_correlation", cat=CATS[2], title="상관관계 스왑식 상관관계", input="xy",
     desc="파생상품 '상관관계 스왑'에서 쓰는 방식(로그 수익률, 평균 0 가정)으로 계산한 상관관계입니다.",
     read="일반 상관관계처럼 -1~1로 읽습니다.",
     use="일반 상관관계와 비교하며 파생상품 계산 방식을 공부할 때.",
-    params=[{**W(63), "name": "n_days"}],
-    code="ts.corr_swap_correlation(x, y, {n_days})",
-    run=lambda c, p: ts.corr_swap_correlation(c.x, c.y, int(p["n_days"])))
+    params=[{**W(63), "name": "n_days"}, {**ZERO_MEAN, "default": True}],
+    code="ts.corr_swap_correlation(x, y, {n_days}, {assume_zero_mean})",
+    run=lambda c, p: ts.corr_swap_correlation(c.x, c.y, int(p["n_days"]), bool(p["assume_zero_mean"])))
 
 add(id="cov", cat=CATS[2], title="공분산", input="xy", src="returns",
     desc="두 종목이 함께 움직이는 정도를 나타내는 원재료 숫자입니다. 상관관계는 이 값을 각자의 흔들림으로 나눈 것입니다.",
@@ -740,6 +766,65 @@ add(id="day_countdown", cat=CATS[7], title="D-day 카운트다운", input="x",
     code="ts.day_countdown(date.fromisoformat('{end_date}'), x.index[0], {business_days})",
     run=lambda c, p: ts.day_countdown(_date(p["end_date"]), c.x.index[0].date(), bool(p["business_days"])))
 
+add(id="generate_series_intraday", cat=CATS[7], title="분 단위 예시 데이터 만들기", input="none",
+    desc="1분 간격의 연습용 가상 가격 데이터를 만듭니다.",
+    read="실제 종목과 무관한 가상의 장중 가격 흐름입니다.",
+    use="장중(분 단위) 데이터를 다루는 함수를 연습할 때.",
+    params=[{"name": "length", "label": "길이(분)", "type": "int", "default": 390, "min": 10, "max": 5000, "tip": "몇 분치 데이터를 만들지 정합니다. 미국 정규장은 하루 390분입니다."}],
+    code="ts.generate_series_intraday({length})",
+    run=lambda c, p: ts.generate_series_intraday(int(p["length"])))
+
+add(id="day_count", cat=CATS[7], title="두 날짜 사이 영업일 수", input="none",
+    desc="두 날짜 사이에 평일(월~금)이 며칠인지 셉니다.",
+    read="결과는 숫자 하나(영업일 수)입니다.",
+    use="만기까지 남은 거래일, 투자 기간의 거래일 수 계산.",
+    params=[{"name": "first", "label": "시작일", "type": "date", "default": "+0", "tip": "세기 시작할 날짜입니다."},
+            {"name": "second", "label": "종료일", "type": "date", "default": "+90", "tip": "세기를 끝낼 날짜입니다."}],
+    code="ts.day_count(date.fromisoformat('{first}'), date.fromisoformat('{second}'))",
+    run=lambda c, p: ts.day_count(_date(p["first"]), _date(p["second"])))
+
+add(id="relative_date_add", cat=CATS[7], title="기간 문자열 → 일수", input="none",
+    desc="'3m', '1y', '-2w' 같은 기간 표기를 대략적인 달력 일수로 바꿉니다(1m=30일, 1y=365일).",
+    read="결과는 일수입니다. 음수면 과거 방향입니다.",
+    use="gs_quant에서 기간을 문자열로 쓰는 함수들의 의미를 확인할 때.",
+    params=[{"name": "date_rule", "label": "기간 표기", "type": "text", "default": "3m", "tip": "숫자 + 단위(d=일, w=주, m=월, y=년)로 씁니다. 예: 10d, 2w, 6m, -1y"}],
+    code="gs_quant.datetime.relative_date_add('{date_rule}')",
+    run=lambda c, p: relative_date_add(p["date_rule"]))
+
+add(id="has_feb_29", cat=CATS[7], title="윤일(2월 29일) 포함 여부", input="none",
+    desc="두 날짜 사이에 2월 29일이 들어 있는지 확인합니다.",
+    read="'예'면 그 기간에 윤일이 있어 1년이 366일입니다.",
+    use="ACT/365 같은 이자 계산에서 윤년 처리를 확인할 때.",
+    params=[{"name": "start", "label": "시작일", "type": "date", "default": "+0", "tip": "확인할 기간의 시작일입니다."},
+            {"name": "end", "label": "종료일", "type": "date", "default": "+730", "tip": "확인할 기간의 종료일입니다."}],
+    code="gs_quant.datetime.has_feb_29(date.fromisoformat('{start}'), date.fromisoformat('{end}'))",
+    run=lambda c, p: bool(has_feb_29(_date(p["start"]), _date(p["end"]))))
+
+add(id="prev_business_date", cat=CATS[7], title="직전 영업일", input="none",
+    desc="정한 날짜 바로 전의 영업일(평일)을 찾습니다.",
+    read="결과는 날짜입니다. 월요일을 넣으면 지난 금요일이 나옵니다.",
+    use="'전 영업일 종가' 기준 계산, 결제일 역산.",
+    params=[{"name": "date", "label": "기준일", "type": "date", "default": "+0", "tip": "이 날짜 바로 전 영업일을 찾습니다."}],
+    code="gs_quant.datetime.prev_business_date(date.fromisoformat('{date}'))",
+    run=lambda c, p: prev_business_date(_date(p["date"])))
+
+add(id="is_business_day", cat=CATS[7], title="영업일 여부", input="none",
+    desc="정한 날짜가 영업일(평일)인지 확인합니다.",
+    read="'예'면 평일, '아니오'면 주말입니다(공휴일 달력은 GS 데이터가 필요해 반영하지 않음).",
+    use="거래·결제가 가능한 날인지 확인할 때.",
+    params=[{"name": "date", "label": "날짜", "type": "date", "default": "+0", "tip": "확인할 날짜입니다."}],
+    code="gs_quant.datetime.is_business_day(date.fromisoformat('{date}'))",
+    run=lambda c, p: bool(is_business_day(_date(p["date"]))))
+
+add(id="business_date_range", cat=CATS[7], title="영업일 목록", input="none",
+    desc="두 날짜 사이의 영업일(평일)을 모두 나열합니다.",
+    read="결과는 날짜 목록입니다.",
+    use="정기 매수일, 리밸런싱 일정 만들기.",
+    params=[{"name": "begin", "label": "시작일", "type": "date", "default": "+0", "tip": "목록의 첫날입니다."},
+            {"name": "end", "label": "종료일", "type": "date", "default": "+14", "tip": "목록의 마지막 날입니다."}],
+    code="list(gs_quant.datetime.date_range(date.fromisoformat('{begin}'), date.fromisoformat('{end}')))",
+    run=lambda c, p: list(gs_date_range(_date(p["begin"]), _date(p["end"]))))
+
 add(id="generate_series", cat=CATS[7], title="예시 데이터 만들기", input="none",
     desc="연습용 가상 가격 데이터를 무작위로 만듭니다. 실행할 때마다 달라집니다.",
     read="실제 종목과 무관한 가상의 가격 흐름입니다.",
@@ -761,6 +846,19 @@ add(id="basket_series", cat=CATS[8], title="바스켓(포트폴리오) 백테스
              "options": [["daily", "매일"], ["weekly", "매주"], ["monthly", "매월"]], "tip": "비중이 틀어졌을 때 원래 비중으로 다시 맞추는 주기입니다."}],
     code="ts.backtesting.basket_series(series, [{weights}], [{cost} / 100] * len(series), RebalFreq.{rebal_freq})",
     run=lambda c, p: ts.backtesting.basket_series(c.xs, c.weights(p["weights"]), [float(p["cost"]) / 100] * len(c.xs), RebalFreq(p["rebal_freq"])))
+
+
+add(id="backtest_basket", cat=CATS[8], title="바스켓 백테스트 (비중 변화 포함)", input="list",
+    desc="basket_series와 같은 계산을 하면서, 날마다 실제 비중이 어떻게 변했는지도 함께 돌려줍니다. 리밸런싱 사이에 오른 종목 비중이 커졌다가 리밸런싱 날 원래대로 돌아오는 모습을 볼 수 있습니다.",
+    read="각 선이 종목별 실제 비중(0~1)입니다. 톱니 모양으로 원래 비중에 돌아오는 날이 리밸런싱 날입니다.",
+    use="리밸런싱이 실제로 비중을 얼마나 바로잡는지, 비중이 얼마나 틀어지는지 확인할 때.",
+    params=[{"name": "weights", "label": "비중(쉼표 구분)", "type": "text", "default": "", "tip": "종목 순서대로 비중을 쉼표로 적습니다. 비우면 똑같이 나눕니다."},
+            {"name": "cost", "label": "매매 비용(%)", "type": "float", "default": 0.1, "min": 0, "max": 5, "step": 0.05, "tip": "리밸런싱할 때 드는 비용을 거래금액 대비 %로 넣습니다."},
+            {"name": "rebal_freq", "label": "리밸런싱 주기", "type": "enum", "default": "monthly",
+             "options": [["daily", "매일"], ["weekly", "매주"], ["monthly", "매월"]], "tip": "원래 비중으로 다시 맞추는 주기입니다."}],
+    code="value, weights = ts.backtesting.backtest_basket(series, [{weights}], [{cost} / 100] * len(series), RebalFreq.{rebal_freq})",
+    run=lambda c, p: ts.backtesting.backtest_basket(c.xs, c.weights(p["weights"]), [float(p["cost"]) / 100] * len(c.xs), RebalFreq(p["rebal_freq"]))[1]
+    .set_axis(c.names, axis=1))
 
 
 REGISTRY = {f["id"]: f for f in F}

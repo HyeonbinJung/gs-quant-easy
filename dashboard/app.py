@@ -25,7 +25,10 @@ from gs_quant.datetime.date import DayCountConvention
 from gs_quant.timeseries import Window
 from gs_quant.timeseries.backtesting import RebalFreq
 
+import epidemic
 import functions as fn
+import instruments
+import strategy
 
 HERE = Path(__file__).resolve().parent
 PORT = int(os.environ.get("PORT", 5050))
@@ -33,6 +36,7 @@ TRADING_DAYS = 252
 RANGES = {"6mo", "1y", "2y", "5y"}
 
 app = Flask(__name__, static_folder=None)
+app.json.sort_keys = False  # 모델·곡선 순서를 정의한 순서대로 유지
 _cache: dict = {}
 CACHE_TTL = 600  # 같은 종목·기간은 10분 동안 다시 받지 않는다
 
@@ -216,6 +220,7 @@ fn._date = parse_date
 class Ctx:
     def __init__(self, x=None, y=None, xs=None):
         self.x, self.y, self.xs = x, y, xs or []
+        self.names = []
 
     def weights(self, text):
         n = len(self.xs)
@@ -242,11 +247,17 @@ def normalize_result(res, label: str) -> dict:
             res = res.copy()
             res.index = pd.to_datetime(res.index)
         return {"kind": "lines", "lines": [series_out(res, label)]}
+    if isinstance(res, (list, tuple)) and res and isinstance(res[0], (dt.date, dt.datetime)):
+        return {"kind": "text", "value": ", ".join(d.isoformat()[:10] for d in res) + f"  (총 {len(res)}일)"}
     if isinstance(res, (list, tuple)):
         out = []
         for i, r in enumerate(res):
             out += normalize_result(r, f"{label} {i + 1}")["lines"]
         return {"kind": "lines", "lines": out}
+    if isinstance(res, (bool, np.bool_)):
+        return {"kind": "text", "value": "예" if res else "아니오"}
+    if isinstance(res, (dt.date, dt.datetime)):
+        return {"kind": "text", "value": res.isoformat()[:10]}
     if isinstance(res, (int, float, np.floating, np.integer)):
         return {"kind": "scalar", "value": float(res)}
     raise ValueError("결과 형식을 표시할 수 없습니다.")
@@ -290,6 +301,7 @@ def api_run():
             for t in tickers:
                 s, meta = get_series(t, period, "price")
                 ctx.xs.append(s)
+                ctx.names.append(meta["name"])
                 inputs.append(series_out(s, meta["name"]))
             common = pd.concat(ctx.xs, axis=1, join="inner").dropna()
             ctx.xs = [common.iloc[:, i] for i in range(common.shape[1])]
@@ -336,6 +348,8 @@ def api_backtest():
         curves["사서 그대로 두기"] = (common / common.iloc[0] * weights).sum(axis=1)
         for name, s in zip(names, series):
             curves[name] = s / s.iloc[0]
+        chosen_freq = body.get("rebal_freq") if body.get("rebal_freq") in labels else "monthly"
+        _, drift = ts.backtesting.backtest_basket(series, weights, [cost] * len(series), RebalFreq(chosen_freq))
         n = len(series)
         rets = common.pct_change()
         return jsonify({
@@ -344,6 +358,7 @@ def api_backtest():
             "curves": {k: to_points(v) for k, v in curves.items()},
             "stats": {k: perf_stats(v) for k, v in curves.items()},
             "correlation": [[float(rets.iloc[:, i].corr(rets.iloc[:, j])) for j in range(n)] for i in range(n)],
+            "weights_drift": [{"name": names[i], **to_points(drift.iloc[:, i] * 100)} for i in range(n)],
         })
     except Exception as exc:
         return jsonify({"error": f"백테스트할 수 없습니다: {exc}"}), 400
@@ -369,6 +384,75 @@ def api_dates():
         })
     except Exception as exc:
         return jsonify({"error": f"계산할 수 없습니다: {exc}"}), 400
+
+
+# ------------------------------------------------------------------ 전략 백테스트
+@app.get("/api/strategies")
+def api_strategies():
+    return jsonify({"strategies": strategy.STRATEGIES, "common": strategy.COMMON})
+
+
+@app.post("/api/strategy")
+def api_strategy():
+    body = request.get_json(force=True)
+    sid = body.get("id")
+    if sid not in strategy.BY_ID:
+        return jsonify({"error": "알 수 없는 전략입니다."}), 400
+    period = body.get("range") if body.get("range") in RANGES else "2y"
+    spec = strategy.BY_ID[sid]
+    given = body.get("params") or {}
+    params = {p["name"]: given.get(p["name"], p["default"]) for p in spec["params"] + strategy.COMMON}
+    try:
+        prices, meta = get_series((body.get("ticker") or "AAPL").strip().upper(), period, "price")
+        r = strategy.run(prices, sid, params)
+    except Exception as exc:
+        return jsonify({"error": f"전략을 실행할 수 없습니다: {exc}"}), 400
+    return jsonify({
+        "name": meta["name"], "currency": meta["currency"], "capital": r["capital"], "summary": r["summary"],
+        "perf": to_points(r["perf"]), "buy_hold": to_points(r["buy_hold"]), "price": to_points(r["price"]),
+        "signal": to_points(r["signal"]) if r["signal"] is not None else None,
+        "trades": r["trades"][-300:],
+    })
+
+
+# ------------------------------------------------------------------ 전염병 모델
+@app.get("/api/epidemic/models")
+def api_epidemic_models():
+    return jsonify(epidemic.catalog())
+
+
+@app.post("/api/epidemic")
+def api_epidemic():
+    body = request.get_json(force=True)
+    model = body.get("model", "SIR")
+    if model not in epidemic.MODELS:
+        return jsonify({"error": "알 수 없는 모델입니다."}), 400
+    given = body.get("params") or {}
+    params = {p["name"]: given.get(p["name"], p["default"]) for p in epidemic.MODELS[model]["params"]}
+    try:
+        return jsonify(epidemic.simulate(model, params, bool(body.get("fit"))))
+    except Exception as exc:
+        return jsonify({"error": f"계산할 수 없습니다: {exc}"}), 400
+
+
+# ------------------------------------------------------------------ 파생상품 살펴보기
+@app.get("/api/instruments")
+def api_instruments():
+    return jsonify(instruments.catalog())
+
+
+@app.post("/api/instrument")
+def api_instrument():
+    body = request.get_json(force=True)
+    iid = body.get("id")
+    if iid not in instruments.BY_ID:
+        return jsonify({"error": "알 수 없는 상품입니다."}), 400
+    given = body.get("params") or {}
+    params = {p["name"]: given.get(p["name"], p["default"]) for p in instruments.BY_ID[iid]["params"]}
+    try:
+        return jsonify(instruments.build(iid, params))
+    except Exception as exc:
+        return jsonify({"error": f"상품을 만들 수 없습니다: {exc}"}), 400
 
 
 if __name__ == "__main__":
